@@ -1,6 +1,7 @@
 using CommandDotNet;
 using KazoOCR.Core;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 
 namespace KazoOCR.CLI;
 
@@ -75,9 +76,28 @@ public sealed class WatchCommand
             Optimize = optimize
         };
 
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
+        {
+            eventArgs.Cancel = true;
+            linkedCts.Cancel();
+        };
+
+        PosixSignalRegistration? sigTermRegistration = null;
+        if (!OperatingSystem.IsWindows())
+        {
+            sigTermRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+            {
+                context.Cancel = true;
+                linkedCts.Cancel();
+            });
+        }
+
+        Console.CancelKeyPress += cancelHandler;
+
         try
         {
-            await _watcherService.WatchAsync(input, settings, cancellationToken);
+            await _watcherService.WatchAsync(input, settings, linkedCts.Token);
             return (int)ExitCodes.Success;
         }
         catch (OperationCanceledException)
@@ -89,6 +109,11 @@ public sealed class WatchCommand
         {
             _logger.LogError(ex, "Watch command failed.");
             return (int)ExitCodes.GeneralError;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+            sigTermRegistration?.Dispose();
         }
     }
 }

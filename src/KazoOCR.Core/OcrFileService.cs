@@ -23,6 +23,11 @@ public sealed class OcrFileService : IOcrFileService
         var extension = Path.GetExtension(inputPath);
 
         var newFileName = $"{fileNameWithoutExtension}{suffix}{extension}";
+        if (Path.IsPathRooted(newFileName))
+        {
+            throw new ArgumentException("Suffix must not produce an absolute path.", nameof(suffix));
+        }
+
         return string.IsNullOrEmpty(directory)
             ? newFileName
             : Path.Combine(directory, newFileName);

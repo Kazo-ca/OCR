@@ -54,16 +54,9 @@ public sealed class EnvironmentDetector : IEnvironmentDetector
         {
             // Tesseract lists languages with --list-langs
             var arguments = "--list-langs";
-            ProcessResult result;
-
-            if (IsWindows())
-            {
-                result = await RunProcessAsync(WslCommand, $"{TesseractCommand} {arguments}", cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                result = await RunProcessAsync(TesseractCommand, arguments, cancellationToken).ConfigureAwait(false);
-            }
+            var result = IsWindows()
+                ? await RunProcessAsync(WslCommand, $"{TesseractCommand} {arguments}", cancellationToken).ConfigureAwait(false)
+                : await RunProcessAsync(TesseractCommand, arguments, cancellationToken).ConfigureAwait(false);
 
             if (result.ExitCode != 0)
             {
@@ -75,15 +68,7 @@ public sealed class EnvironmentDetector : IEnvironmentDetector
             var output = result.StandardOutput + result.StandardError;
             var lines = output.Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (var line in lines)
-            {
-                if (line.Trim().Equals(lang, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-            }
-
-            return false;
+            return lines.Any(line => line.Trim().Equals(lang, StringComparison.OrdinalIgnoreCase));
         }
         catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
         {
@@ -107,18 +92,9 @@ public sealed class EnvironmentDetector : IEnvironmentDetector
     {
         try
         {
-            ProcessResult result;
-
-            if (IsWindows())
-            {
-                // Use WSL to check for the command
-                result = await RunProcessAsync(WslCommand, $"{WhichCommand} {command}", cancellationToken).ConfigureAwait(false);
-            }
-            else
-            {
-                // Use which directly on Linux/macOS
-                result = await RunProcessAsync(WhichCommand, command, cancellationToken).ConfigureAwait(false);
-            }
+            var result = IsWindows()
+                ? await RunProcessAsync(WslCommand, $"{WhichCommand} {command}", cancellationToken).ConfigureAwait(false)
+                : await RunProcessAsync(WhichCommand, command, cancellationToken).ConfigureAwait(false);
 
             return result.ExitCode == 0 && !string.IsNullOrWhiteSpace(result.StandardOutput);
         }

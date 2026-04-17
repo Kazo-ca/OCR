@@ -1,0 +1,61 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# All files
+[*]
+indent_style = space
+indent_size = 4
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# C# files
+[*.cs]
+# Code style defaults
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_var_elsewhere = true:suggestion
+
+# Prefer conditional expression over if-else when assigning to the same variable
+dotnet_style_prefer_conditional_expression_over_assignment = true:warning
+
+# Prefer LINQ methods (Where, Any, etc.) over foreach with filtering
+dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed:warning
+
+# Avoid unused local variables
+# CS0219: Variable is assigned but its value is never used
+dotnet_diagnostic.CS0219.severity = warning
+
+# IDE0059: Unnecessary assignment of a value
+dotnet_diagnostic.IDE0059.severity = warning
+
+# IDE0058: Expression value is never used
+dotnet_diagnostic.IDE0058.severity = suggestion
+
+# CA1508: Avoid dead conditional code
+dotnet_diagnostic.CA1508.severity = warning
+
+# CA2000: Dispose objects before losing scope (IDisposable)
+dotnet_diagnostic.CA2000.severity = warning
+
+# Prefer using 'Any()' instead of 'Count() > 0' or 'Count() != 0'
+dotnet_diagnostic.CA1860.severity = warning
+
+# JSON files
+[*.json]
+indent_size = 2
+
+# YAML files
+[*.{yml,yaml}]
+indent_size = 2
+
+# XML files
+[*.{xml,csproj,props,targets}]
+indent_size = 2
+
+# Markdown files
+[*.md]
+trim_trailing_whitespace = false

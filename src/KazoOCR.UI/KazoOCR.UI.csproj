@@ -17,6 +17,11 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- Disable non-Windows MAUI platforms (no Tizen, Android, iOS, macOS support) -->
+    <MauiEnableTizenTargetFramework>false</MauiEnableTizenTargetFramework>
+    <MauiEnableAndroidTargetFramework>false</MauiEnableAndroidTargetFramework>
+    <MauiEnableiOSTargetFramework>false</MauiEnableiOSTargetFramework>
+    <MauiEnableMacCatalystTargetFramework>false</MauiEnableMacCatalystTargetFramework>
   </PropertyGroup>
 
   <!-- When not building MAUI, create a minimal target to satisfy solution build -->

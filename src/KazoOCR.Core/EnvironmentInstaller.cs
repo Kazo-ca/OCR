@@ -11,7 +11,7 @@ namespace KazoOCR.Core;
 public sealed class EnvironmentInstaller : IEnvironmentInstaller
 {
     private const string WslCommand = "wsl";
-    private const string SudoCommand = "sudo";
+    private const string BashCommand = "bash";
     private const string AptGetCommand = "apt-get";
 
     /// <summary>
@@ -23,7 +23,7 @@ public sealed class EnvironmentInstaller : IEnvironmentInstaller
     public async Task<ProcessResult> InstallDependenciesAsync(CancellationToken cancellationToken = default)
     {
         var packages = string.Join(" ", DefaultPackages);
-        var installCommand = $"{AptGetCommand} update && {SudoCommand} {AptGetCommand} install -y {packages}";
+        var installCommand = $"sudo {AptGetCommand} update && sudo {AptGetCommand} install -y {packages}";
 
         return await RunInstallCommandAsync(installCommand, cancellationToken).ConfigureAwait(false);
     }
@@ -39,7 +39,7 @@ public sealed class EnvironmentInstaller : IEnvironmentInstaller
         }
 
         var packageName = $"tesseract-ocr-{lang.ToLowerInvariant()}";
-        var installCommand = $"{AptGetCommand} update && {SudoCommand} {AptGetCommand} install -y {packageName}";
+        var installCommand = $"sudo {AptGetCommand} update && sudo {AptGetCommand} install -y {packageName}";
 
         return await RunInstallCommandAsync(installCommand, cancellationToken).ConfigureAwait(false);
     }
@@ -50,7 +50,7 @@ public sealed class EnvironmentInstaller : IEnvironmentInstaller
     internal static bool IsWindows() => RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
     /// <summary>
-    /// Runs an installation command via sudo/apt-get (or WSL on Windows).
+    /// Runs an installation command via bash (or WSL on Windows).
     /// </summary>
     private async Task<ProcessResult> RunInstallCommandAsync(string installCommand, CancellationToken cancellationToken)
     {
@@ -59,15 +59,15 @@ public sealed class EnvironmentInstaller : IEnvironmentInstaller
 
         if (IsWindows())
         {
-            // On Windows, run via WSL with sudo
+            // On Windows, run via WSL bash
             fileName = WslCommand;
-            arguments = $"{SudoCommand} bash -c \"{installCommand}\"";
+            arguments = $"{BashCommand} -c \"{installCommand}\"";
         }
         else
         {
-            // On Linux, run via bash with sudo
-            fileName = SudoCommand;
-            arguments = $"bash -c \"{installCommand}\"";
+            // On Linux, run via bash directly
+            fileName = BashCommand;
+            arguments = $"-c \"{installCommand}\"";
         }
 
         using var process = new Process

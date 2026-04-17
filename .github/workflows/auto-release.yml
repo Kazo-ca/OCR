@@ -68,6 +68,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: ./artifacts
+          pattern: kazoocr-*
           merge-multiple: true
 
       - name: Get tag name

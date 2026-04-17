@@ -132,37 +132,40 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     }
 
     /// <summary>
-    /// Builds the OCRmyPDF command-line arguments from the settings.
+    /// Adds the OCRmyPDF arguments from the settings as discrete command-line arguments.
+    /// Each flag and value is appended separately so that callers can use
+    /// <see cref="ProcessStartInfo.ArgumentList"/> safely without manual escaping.
     /// </summary>
+    /// <param name="arguments">The argument collection to populate.</param>
     /// <param name="settings">The OCR settings.</param>
-    /// <returns>The command-line arguments string.</returns>
-    internal static string BuildOcrArguments(OcrSettings settings)
+    internal static void AddOcrArguments(ICollection<string> arguments, OcrSettings settings)
     {
-        var args = new List<string>();
+        ArgumentNullException.ThrowIfNull(arguments);
+        ArgumentNullException.ThrowIfNull(settings);
 
         if (settings.Deskew)
         {
-            args.Add("--deskew");
+            arguments.Add("--deskew");
         }
 
         if (settings.Clean)
         {
-            args.Add("--clean");
+            arguments.Add("--clean");
         }
 
         if (settings.Rotate)
         {
-            args.Add("--rotate-pages");
+            arguments.Add("--rotate-pages");
         }
 
-        args.Add($"--optimize {settings.Optimize}");
+        arguments.Add("--optimize");
+        arguments.Add(settings.Optimize.ToString());
 
         if (!string.IsNullOrWhiteSpace(settings.Languages))
         {
-            args.Add($"-l {settings.Languages}");
+            arguments.Add("-l");
+            arguments.Add(settings.Languages);
         }
-
-        return string.Join(" ", args);
     }
 
     /// <summary>

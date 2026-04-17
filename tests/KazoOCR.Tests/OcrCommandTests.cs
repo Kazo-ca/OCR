@@ -30,7 +30,8 @@ public class OcrCommandTests
     private static string CreateTemporaryTestDirectory()
     {
         var uniqueId = Guid.NewGuid().ToString("N")[..UniqueIdLength];
-        var tempDir = Path.Combine(Path.GetTempPath(), $"ocr-test-{uniqueId}");
+        var directoryName = $"ocr-test-{uniqueId}";
+        var tempDir = Path.Join(Path.GetTempPath(), directoryName);
         Directory.CreateDirectory(tempDir);
         return tempDir;
     }
@@ -346,8 +347,8 @@ public class OcrCommandTests
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
-        var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
-        var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
+        var pdfFile1 = Path.Join(tempDir, "doc1.pdf");
+        var pdfFile2 = Path.Join(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
         File.WriteAllText(pdfFile2, "test2");
 
@@ -359,7 +360,7 @@ public class OcrCommandTests
                 .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(It.IsAny<string>(), "_OCR"))
                 .Returns<string, string>((input, suffix) =>
-                    Path.Combine(
+                    Path.Join(
                         Path.GetDirectoryName(input)!,
                         Path.GetFileNameWithoutExtension(input) + suffix + Path.GetExtension(input)));
             _processRunnerMock.Setup(x => x.RunAsync(
@@ -398,8 +399,8 @@ public class OcrCommandTests
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
-        var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
-        var pdfFile2 = Path.Combine(tempDir, "doc2_OCR.pdf");
+        var pdfFile1 = Path.Join(tempDir, "doc1.pdf");
+        var pdfFile2 = Path.Join(tempDir, "doc2_OCR.pdf");
         File.WriteAllText(pdfFile1, "test1");
         File.WriteAllText(pdfFile2, "test2");
 
@@ -412,7 +413,7 @@ public class OcrCommandTests
             _fileServiceMock.Setup(x => x.ValidateInput(pdfFile1))
                 .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(pdfFile1, "_OCR"))
-                .Returns(Path.Combine(tempDir, "doc1_OCR.pdf"));
+                .Returns(Path.Join(tempDir, "doc1_OCR.pdf"));
             _processRunnerMock.Setup(x => x.RunAsync(
                 It.IsAny<OcrSettings>(),
                 pdfFile1,
@@ -454,10 +455,10 @@ public class OcrCommandTests
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
-        var subDir = Path.Combine(tempDir, "subdir");
+        var subDir = Path.Join(tempDir, "subdir");
         Directory.CreateDirectory(subDir);
-        var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
-        var pdfFile2 = Path.Combine(subDir, "doc2.pdf");
+        var pdfFile1 = Path.Join(tempDir, "doc1.pdf");
+        var pdfFile2 = Path.Join(subDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
         File.WriteAllText(pdfFile2, "test2");
 
@@ -469,7 +470,7 @@ public class OcrCommandTests
                 .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(It.IsAny<string>(), "_OCR"))
                 .Returns<string, string>((input, suffix) =>
-                    Path.Combine(
+                    Path.Join(
                         Path.GetDirectoryName(input)!,
                         Path.GetFileNameWithoutExtension(input) + suffix + Path.GetExtension(input)));
             _processRunnerMock.Setup(x => x.RunAsync(
@@ -508,8 +509,8 @@ public class OcrCommandTests
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
-        var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
-        var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
+        var pdfFile1 = Path.Join(tempDir, "doc1.pdf");
+        var pdfFile2 = Path.Join(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
         File.WriteAllText(pdfFile2, "test2");
 
@@ -521,7 +522,7 @@ public class OcrCommandTests
                 .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(It.IsAny<string>(), "_OCR"))
                 .Returns<string, string>((input, suffix) =>
-                    Path.Combine(
+                    Path.Join(
                         Path.GetDirectoryName(input)!,
                         Path.GetFileNameWithoutExtension(input) + suffix + Path.GetExtension(input)));
             _processRunnerMock.Setup(x => x.RunAsync(
@@ -565,12 +566,12 @@ public class OcrCommandTests
     {
         // Arrange
         var tempDir = CreateTemporaryTestDirectory();
-        var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
-        var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
+        var pdfFile1 = Path.Join(tempDir, "doc1.pdf");
+        var pdfFile2 = Path.Join(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
         File.WriteAllText(pdfFile2, "test2");
 
-        var cts = new CancellationTokenSource();
+        using var cts = new CancellationTokenSource();
 
         try
         {
@@ -580,7 +581,7 @@ public class OcrCommandTests
                 .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(It.IsAny<string>(), "_OCR"))
                 .Returns<string, string>((input, suffix) =>
-                    Path.Combine(
+                    Path.Join(
                         Path.GetDirectoryName(input)!,
                         Path.GetFileNameWithoutExtension(input) + suffix + Path.GetExtension(input)));
 

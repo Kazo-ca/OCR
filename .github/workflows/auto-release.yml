@@ -30,6 +30,9 @@ jobs:
       - name: Build in Release mode
         run: dotnet build --configuration Release --no-restore
 
+      - name: Run tests
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
       - name: Publish CLI for ${{ matrix.runtime }}
         run: |
           dotnet publish src/KazoOCR.CLI/KazoOCR.CLI.csproj \
@@ -50,14 +53,19 @@ jobs:
           cd ./publish/${{ matrix.runtime }}
           zip -r ../kazoocr-${{ matrix.runtime }}.zip .
 
-      - name: Upload artifact
+      - name: Upload artifact (Linux/macOS)
+        if: matrix.runtime != 'win-x64'
         uses: actions/upload-artifact@v4
         with:
           name: kazoocr-${{ matrix.runtime }}
-          path: |
-            ./publish/kazoocr-${{ matrix.runtime }}.tar.gz
-            ./publish/kazoocr-${{ matrix.runtime }}.zip
-          if-no-files-found: ignore
+          path: ./publish/kazoocr-${{ matrix.runtime }}.tar.gz
+
+      - name: Upload artifact (Windows)
+        if: matrix.runtime == 'win-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: kazoocr-${{ matrix.runtime }}
+          path: ./publish/kazoocr-${{ matrix.runtime }}.zip
 
   release:
     name: Create GitHub Release
@@ -80,18 +88,6 @@ jobs:
         with:
           tag_name: ${{ steps.tag.outputs.TAG_NAME }}
           name: Release ${{ steps.tag.outputs.TAG_NAME }}
-          body: |
-            ## KazoOCR ${{ steps.tag.outputs.TAG_NAME }}
-
-            ### Downloads
-            - **Linux**: `kazoocr-linux-x64.tar.gz`
-            - **Windows**: `kazoocr-win-x64.zip`
-            - **macOS**: `kazoocr-osx-x64.tar.gz`
-
-            ### Installation
-            1. Download the appropriate archive for your platform
-            2. Extract the contents
-            3. Run `KazoOCR.CLI` (Linux/macOS) or `KazoOCR.CLI.exe` (Windows)
           files: |
             ./artifacts/*.tar.gz
             ./artifacts/*.zip

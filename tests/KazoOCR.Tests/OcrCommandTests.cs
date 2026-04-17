@@ -8,6 +8,8 @@ using Moq;
 
 public class OcrCommandTests
 {
+    private const int UniqueIdLength = 8;
+
     private readonly Mock<IOcrFileService> _fileServiceMock;
     private readonly Mock<IOcrProcessRunner> _processRunnerMock;
     private readonly Mock<ILogger<OcrCommand>> _loggerMock;
@@ -19,6 +21,18 @@ public class OcrCommandTests
         _processRunnerMock = new Mock<IOcrProcessRunner>();
         _loggerMock = new Mock<ILogger<OcrCommand>>();
         _command = new OcrCommand(_fileServiceMock.Object, _processRunnerMock.Object, _loggerMock.Object);
+    }
+
+    /// <summary>
+    /// Creates a temporary test directory with a unique name.
+    /// </summary>
+    /// <returns>The full path to the created temporary directory.</returns>
+    private static string CreateTemporaryTestDirectory()
+    {
+        var uniqueId = Guid.NewGuid().ToString("N")[..UniqueIdLength];
+        var tempDir = Path.Combine(Path.GetTempPath(), $"ocr-test-{uniqueId}");
+        Directory.CreateDirectory(tempDir);
+        return tempDir;
     }
 
     #region Constructor Tests
@@ -304,8 +318,7 @@ public class OcrCommandTests
     public async Task Execute_WithEmptyDirectory_ReturnsFileNotFound()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        var tempDir = CreateTemporaryTestDirectory();
 
         try
         {
@@ -332,8 +345,7 @@ public class OcrCommandTests
     public async Task Execute_WithDirectoryContainingPdfs_ProcessesAllFiles()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        var tempDir = CreateTemporaryTestDirectory();
         var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
         var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
@@ -385,8 +397,7 @@ public class OcrCommandTests
     public async Task Execute_WithDirectoryContainingAlreadyProcessedFiles_SkipsProcessed()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        var tempDir = CreateTemporaryTestDirectory();
         var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
         var pdfFile2 = Path.Combine(tempDir, "doc2_OCR.pdf");
         File.WriteAllText(pdfFile1, "test1");
@@ -442,7 +453,7 @@ public class OcrCommandTests
     public async Task Execute_WithSubdirectoryContainingPdfs_ProcessesRecursively()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
+        var tempDir = CreateTemporaryTestDirectory();
         var subDir = Path.Combine(tempDir, "subdir");
         Directory.CreateDirectory(subDir);
         var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
@@ -496,8 +507,7 @@ public class OcrCommandTests
     public async Task Execute_WithSomeFilesFailingOcr_ReturnsOcrFailed()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        var tempDir = CreateTemporaryTestDirectory();
         var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
         var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");
@@ -554,8 +564,7 @@ public class OcrCommandTests
     public async Task Execute_WithCancellation_StopsProcessing()
     {
         // Arrange
-        var tempDir = Path.Combine(Path.GetTempPath(), "ocr-test-" + Guid.NewGuid().ToString("N")[..8]);
-        Directory.CreateDirectory(tempDir);
+        var tempDir = CreateTemporaryTestDirectory();
         var pdfFile1 = Path.Combine(tempDir, "doc1.pdf");
         var pdfFile2 = Path.Combine(tempDir, "doc2.pdf");
         File.WriteAllText(pdfFile1, "test1");

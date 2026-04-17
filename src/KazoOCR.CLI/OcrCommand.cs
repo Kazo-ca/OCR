@@ -13,6 +13,9 @@ public class RootCommand
     public OcrCommand? Ocr { get; set; }
 
     [Subcommand]
+    public WatchCommand? Watch { get; set; }
+
+    [Subcommand]
     public KazoOcrCommands? Environment { get; set; }
 }
 

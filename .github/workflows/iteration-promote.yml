@@ -20,7 +20,6 @@ jobs:
           script: |
             const PROJECT_ID = "PVT_kwDOD_m3A84BU243";
             const STATUS_FIELD_ID = "PVTSSF_lADOD_m3A84BU243zhGUPds";
-            const ITERATION_FIELD_ID = "PVTIF_lADOD_m3A84BU243zhGXjjc";
 
             // --- 1. Fetch all project items with their Status and Iteration ---
             const query = `query($projectId: ID!) {
@@ -51,12 +50,12 @@ jobs:
                       }
                     }
                   }
-                  field(name: "Status") {
+                  statusField: field(name: "Status") {
                     ... on ProjectV2SingleSelectField {
                       options { id name }
                     }
                   }
-                  field(name: "Iteration") {
+                  iterationField: field(name: "Iteration") {
                     ... on ProjectV2IterationField {
                       configuration {
                         iterations { id title startDate duration }
@@ -72,7 +71,7 @@ jobs:
 
             // --- 2. Parse status options ---
             const statusOptions = {};
-            for (const opt of project.field.options || []) {
+            for (const opt of project.statusField.options || []) {
               statusOptions[opt.name] = opt.id;
             }
             const BACKLOG_ID = statusOptions["Backlog"];

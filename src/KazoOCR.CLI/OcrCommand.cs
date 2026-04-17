@@ -11,6 +11,9 @@ public class RootCommand
 {
     [Subcommand]
     public OcrCommand? Ocr { get; set; }
+
+    [Subcommand]
+    public KazoOcrCommands? Environment { get; set; }
 }
 
 /// <summary>

@@ -115,6 +115,48 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 
 ## Coding Guidelines
 
+### Code Quality Rules
+
+The project uses `.editorconfig` to enforce code quality rules. Key guidelines:
+
+1. **Avoid unused variable assignments** — If a method return value is not used, call the method without assigning to a variable:
+   ```csharp
+   // Bad: Unused assignment triggers IDE0059
+   var result = await SomeMethodAsync();
+   
+   // Good: Just await without assignment if result not used
+   await SomeMethodAsync();
+   ```
+
+2. **Use conditional expressions over if-else for assignments** — When both branches assign to the same variable, use ternary:
+   ```csharp
+   // Bad: Explicit if-else for same variable
+   ProcessResult result;
+   if (IsWindows())
+       result = await RunWindowsAsync();
+   else
+       result = await RunLinuxAsync();
+   
+   // Good: Conditional expression
+   var result = IsWindows()
+       ? await RunWindowsAsync()
+       : await RunLinuxAsync();
+   ```
+
+3. **Use LINQ over foreach for filtering** — Prefer `Any()`, `Where()`, `FirstOrDefault()`:
+   ```csharp
+   // Bad: Foreach with if filter
+   foreach (var line in lines)
+   {
+       if (line.Equals(target))
+           return true;
+   }
+   return false;
+   
+   // Good: LINQ Any()
+   return lines.Any(line => line.Equals(target));
+   ```
+
 ### IDisposable Pattern
 - Always dispose `IDisposable` objects using `using` or `using var` statements
 - Example: `using var cts = new CancellationTokenSource();`
@@ -134,12 +176,21 @@ var result = Path.Join(basePath, directoryName);
 var fullPath = Path.Combine(tempDir, untrustedInput); // Could be rooted!
 ```
 
+### Analyzer Rules
+
+Key diagnostics enabled as warnings in `.editorconfig`:
+- `CS0219` — Variable assigned but never used
+- `IDE0059` — Unnecessary assignment
+- `CA1508` — Dead conditional code
+- `CA2000` — Dispose IDisposable before losing scope
+- `CA1860` — Prefer `Any()` over `Count() > 0`
+
 ### Code Analysis
 - Configure analyzer rules in `.editorconfig`
 - Run `dotnet build` with warnings treated as errors (`TreatWarningsAsErrors=true`)
 - Review and fix all github-code-quality comments before merging
 
-## Itérations
+## Iterations
 
 1. **Fondations & Core Logic** : structure solution, services de renommage/validation, wrapper process, README/docs, tests
 2. **CLI & Environnement** : CommandDotNet, détection WSL, élévation de privilèges

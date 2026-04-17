@@ -16,7 +16,10 @@ services.AddLogging(builder =>
 });
 services.AddSingleton<IOcrFileService, OcrFileService>();
 services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
+services.AddSingleton<IEnvironmentDetector, EnvironmentDetector>();
+services.AddSingleton<IEnvironmentInstaller, EnvironmentInstaller>();
 services.AddTransient<OcrCommand>();
+services.AddTransient<KazoOcrCommands>();
 
 await using var serviceProvider = services.BuildServiceProvider();
 

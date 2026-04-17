@@ -32,6 +32,12 @@ dotnet_naming_symbols.private_fields.applicable_accessibilities = private
 dotnet_naming_style.camel_case_underscore.capitalization = camel_case
 dotnet_naming_style.camel_case_underscore.required_prefix = _
 
+# Prefer conditional expression over if-else when assigning to the same variable
+dotnet_style_prefer_conditional_expression_over_assignment = true:warning
+
+# Prefer explicit casts in the foreach source when the iteration variable is strongly typed
+dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed:warning
+
 # Code quality
 dotnet_code_quality.ca1816.api_surface = public
 dotnet_code_quality.ca2000.exclude_ordefault_methods = true
@@ -40,12 +46,23 @@ dotnet_code_quality.ca2000.exclude_ordefault_methods = true
 # Analyzer Rules — Prevent common issues
 # =============================================================================
 
-# CA2000: Dispose objects before losing scope
-# Ensure IDisposable objects are properly disposed (e.g., use 'using' statement)
-dotnet_diagnostic.CA2000.severity = warning
+# CS0219: Variable is assigned but its value is never used
+dotnet_diagnostic.CS0219.severity = warning
+
+# IDE0059: Unnecessary assignment of a value
+dotnet_diagnostic.IDE0059.severity = warning
+
+# IDE0058: Expression value is never used
+dotnet_diagnostic.IDE0058.severity = suggestion
+
+# IDE0063: Use simple 'using' statement
+csharp_prefer_simple_using_statement = true:suggestion
 
 # CA1508: Avoid dead conditional code
 dotnet_diagnostic.CA1508.severity = warning
+
+# CA2000: Dispose objects before losing scope
+dotnet_diagnostic.CA2000.severity = warning
 
 # CA1062: Validate arguments of public methods
 dotnet_diagnostic.CA1062.severity = warning
@@ -62,8 +79,8 @@ dotnet_diagnostic.CA1307.severity = suggestion
 # CA1310: Specify StringComparison for correctness
 dotnet_diagnostic.CA1310.severity = warning
 
-# IDE0063: Use simple 'using' statement
-csharp_prefer_simple_using_statement = true:suggestion
+# CA1860: Prefer using 'Any()' instead of 'Count() > 0' or 'Count() != 0'
+dotnet_diagnostic.CA1860.severity = warning
 
 # =============================================================================
 # Path handling best practices

@@ -20,6 +20,7 @@ jobs:
           script: |
             const PROJECT_ID = "PVT_kwDOD_m3A84BU243";
             const STATUS_FIELD_ID = "PVTSSF_lADOD_m3A84BU243zhGUPds";
+            const ITERATION_FIELD_ID = "PVTIF_lADOD_m3A84BU243zhGXjjc";
 
             // --- 1. Fetch all project items with their Status and Iteration ---
             const query = `query($projectId: ID!) {
@@ -169,13 +170,22 @@ jobs:
             const nextIter = iterations[currentIdx + 1];
             core.info(`Promoting items from "${nextIter.title}" (Backlog → Todo)`);
 
-            // --- 8. Promote: set Status from Backlog to Todo ---
+            // --- 8. Promote: set Status from Backlog to Todo, and move into @current iteration ---
             const mutation = `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
               updateProjectV2ItemFieldValue(input: {
                 projectId: $projectId
                 itemId: $itemId
                 fieldId: $fieldId
                 value: { singleSelectOptionId: $optionId }
+              }) { projectV2Item { id } }
+            }`;
+
+            const iterMutation = `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $iterationId: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $projectId
+                itemId: $itemId
+                fieldId: $fieldId
+                value: { iterationId: $iterationId }
               }) { projectV2Item { id } }
             }`;
 
@@ -189,7 +199,14 @@ jobs:
                   fieldId: STATUS_FIELD_ID,
                   optionId: TODO_ID
                 });
-                core.info(`  ✓ "${item.title}" → Todo`);
+                // Move item into the current iteration so @current filter shows it immediately
+                await github.graphql(iterMutation, {
+                  projectId: PROJECT_ID,
+                  itemId: item.id,
+                  fieldId: ITERATION_FIELD_ID,
+                  iterationId: closedIterationId
+                });
+                core.info(`  ✓ "${item.title}" → Todo (moved to @current iteration)`);
                 promoted++;
               }
             }

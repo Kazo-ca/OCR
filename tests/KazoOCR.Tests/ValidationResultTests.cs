@@ -1,5 +1,6 @@
 namespace KazoOCR.Tests;
 
+using FluentAssertions;
 using KazoOCR.Core;
 
 public class ValidationResultTests
@@ -11,8 +12,8 @@ public class ValidationResultTests
         var result = new ValidationResult();
 
         // Assert
-        Assert.True(result.IsValid);
-        Assert.Empty(result.Errors);
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -25,10 +26,10 @@ public class ValidationResultTests
         var result = new ValidationResult(errors);
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Equal(2, result.Errors.Count);
-        Assert.Contains("Error 1", result.Errors);
-        Assert.Contains("Error 2", result.Errors);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().HaveCount(2);
+        result.Errors.Should().Contain("Error 1");
+        result.Errors.Should().Contain("Error 2");
     }
 
     [Fact]
@@ -38,8 +39,8 @@ public class ValidationResultTests
         var result = new ValidationResult(null!);
 
         // Assert
-        Assert.True(result.IsValid);
-        Assert.Empty(result.Errors);
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -52,9 +53,8 @@ public class ValidationResultTests
         result.AddError("Test error");
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Single(result.Errors);
-        Assert.Equal("Test error", result.Errors[0]);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Should().Be("Test error");
     }
 
     [Fact]
@@ -69,8 +69,8 @@ public class ValidationResultTests
         result.AddError("   ");
 
         // Assert
-        Assert.True(result.IsValid);
-        Assert.Empty(result.Errors);
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -80,8 +80,8 @@ public class ValidationResultTests
         var result = ValidationResult.Success();
 
         // Assert
-        Assert.True(result.IsValid);
-        Assert.Empty(result.Errors);
+        result.IsValid.Should().BeTrue();
+        result.Errors.Should().BeEmpty();
     }
 
     [Fact]
@@ -91,9 +91,8 @@ public class ValidationResultTests
         var result = ValidationResult.Failure("Test error");
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Single(result.Errors);
-        Assert.Equal("Test error", result.Errors[0]);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().ContainSingle().Which.Should().Be("Test error");
     }
 
     [Fact]
@@ -106,7 +105,7 @@ public class ValidationResultTests
         var result = ValidationResult.Failure(errors);
 
         // Assert
-        Assert.False(result.IsValid);
-        Assert.Equal(3, result.Errors.Count);
+        result.IsValid.Should().BeFalse();
+        result.Errors.Should().HaveCount(3);
     }
 }

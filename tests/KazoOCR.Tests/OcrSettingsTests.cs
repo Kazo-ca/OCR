@@ -1,5 +1,6 @@
 namespace KazoOCR.Tests;
 
+using FluentAssertions;
 using KazoOCR.Core;
 
 public class OcrSettingsTests
@@ -11,12 +12,12 @@ public class OcrSettingsTests
         var settings = new OcrSettings();
 
         // Assert
-        Assert.Equal("_OCR", settings.Suffix);
-        Assert.Equal("fra+eng", settings.Languages);
-        Assert.True(settings.Deskew);
-        Assert.False(settings.Clean);
-        Assert.True(settings.Rotate);
-        Assert.Equal(1, settings.Optimize);
+        settings.Suffix.Should().Be("_OCR");
+        settings.Languages.Should().Be("fra+eng");
+        settings.Deskew.Should().BeTrue();
+        settings.Clean.Should().BeFalse();
+        settings.Rotate.Should().BeTrue();
+        settings.Optimize.Should().Be(1);
     }
 
     [Fact]
@@ -29,7 +30,7 @@ public class OcrSettingsTests
         settings.Suffix = "_PROCESSED";
 
         // Assert
-        Assert.Equal("_PROCESSED", settings.Suffix);
+        settings.Suffix.Should().Be("_PROCESSED");
     }
 
     [Fact]
@@ -42,7 +43,7 @@ public class OcrSettingsTests
         settings.Languages = "eng";
 
         // Assert
-        Assert.Equal("eng", settings.Languages);
+        settings.Languages.Should().Be("eng");
     }
 
     [Fact]
@@ -55,7 +56,7 @@ public class OcrSettingsTests
         settings.Deskew = false;
 
         // Assert
-        Assert.False(settings.Deskew);
+        settings.Deskew.Should().BeFalse();
     }
 
     [Fact]
@@ -68,7 +69,7 @@ public class OcrSettingsTests
         settings.Clean = true;
 
         // Assert
-        Assert.True(settings.Clean);
+        settings.Clean.Should().BeTrue();
     }
 
     [Fact]
@@ -81,7 +82,7 @@ public class OcrSettingsTests
         settings.Rotate = false;
 
         // Assert
-        Assert.False(settings.Rotate);
+        settings.Rotate.Should().BeFalse();
     }
 
     [Fact]
@@ -94,6 +95,6 @@ public class OcrSettingsTests
         settings.Optimize = 3;
 
         // Assert
-        Assert.Equal(3, settings.Optimize);
+        settings.Optimize.Should().Be(3);
     }
 }

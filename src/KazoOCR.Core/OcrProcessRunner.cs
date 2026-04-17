@@ -170,17 +170,13 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     /// For example: "C:\Users\Test\file.pdf" becomes "/mnt/c/Users/Test/file.pdf"
     /// </summary>
     /// <param name="windowsPath">The Windows path to convert.</param>
-    /// <returns>The equivalent WSL path, or empty string if the input is null or whitespace.</returns>
+    /// <returns>The equivalent WSL path, or empty string if the input is null or empty.</returns>
     internal static string ConvertToWslPath(string windowsPath)
     {
+        // Handle null or empty inputs
         if (string.IsNullOrEmpty(windowsPath))
         {
             return string.Empty;
-        }
-
-        if (string.IsNullOrWhiteSpace(windowsPath))
-        {
-            return windowsPath;
         }
 
         // Check if the path is an absolute Windows path with a drive letter
@@ -195,7 +191,7 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
             return $"/mnt/{driveLetter}{remainingPath}";
         }
 
-        // For relative paths or UNC paths, just replace backslashes
+        // For relative paths, UNC paths, or whitespace-only strings, just replace backslashes
         return windowsPath.Replace('\\', '/');
     }
 

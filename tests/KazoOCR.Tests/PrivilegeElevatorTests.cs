@@ -127,6 +127,20 @@ public class PrivilegeElevatorTests
         Assert.IsType<bool>(result);
     }
 
+    [Fact]
+    public async Task RelaunchElevatedAsync_WithPreCanceledToken_ThrowsOperationCanceledException()
+    {
+        // Arrange
+        var elevator = new PrivilegeElevator();
+        var args = new[] { "test" };
+        using var cts = new CancellationTokenSource();
+        cts.Cancel(); // Pre-cancel the token
+
+        // Act & Assert - Should throw OperationCanceledException when token is already canceled
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => elevator.RelaunchElevatedAsync(args, cts.Token));
+    }
+
     #endregion
 
     #region EscapeArguments Tests
@@ -203,9 +217,9 @@ public class PrivilegeElevatorTests
     }
 
     [Fact]
-    public void EscapeArguments_WithNullElement_SkipsNull()
+    public void EscapeArguments_WithEmptyElements_SkipsEmptyStrings()
     {
-        // Arrange - Empty strings are skipped
+        // Arrange - Empty strings are skipped (method filters out null/empty values)
         var args = new[] { "", "valid", "" };
 
         // Act

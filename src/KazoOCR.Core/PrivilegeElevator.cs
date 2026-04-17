@@ -8,7 +8,7 @@ namespace KazoOCR.Core;
 /// <summary>
 /// Cross-platform implementation of privilege elevation.
 /// On Windows, uses WindowsIdentity to check admin status and "runas" verb for elevation.
-/// On Linux/macOS, checks for root user (UID 0) but does not support automatic elevation.
+/// On Linux/macOS, checks if the current user is "root" but does not support automatic elevation.
 /// </summary>
 public sealed class PrivilegeElevator : IPrivilegeElevator
 {
@@ -20,7 +20,7 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
             return IsWindowsAdministrator();
         }
 
-        // On Linux/macOS, check if running as root (UID 0)
+        // On Linux/macOS, check if running as the "root" user
         return IsUnixRoot();
     }
 
@@ -28,6 +28,9 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     public Task<bool> RelaunchElevatedAsync(string[] args, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(args);
+
+        // Honor cancellation token - check for pre-cancellation before attempting elevation
+        cancellationToken.ThrowIfCancellationRequested();
 
         // Elevation via runas is only supported on Windows
         if (!OperatingSystem.IsWindows())
@@ -51,9 +54,14 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     }
 
     /// <summary>
-    /// Checks if the current process is running as root on Unix-like systems.
+    /// Checks if the current process is running as the root user on Unix-like systems.
+    /// This checks if <see cref="Environment.UserName"/> equals "root" (case-sensitive).
     /// </summary>
-    /// <returns><c>true</c> if running as root (UID 0); otherwise, <c>false</c>.</returns>
+    /// <returns><c>true</c> if the current user is "root"; otherwise, <c>false</c>.</returns>
+    /// <remarks>
+    /// This is a simplified check that compares the username against "root".
+    /// On most Unix-like systems, this correctly identifies the superuser account.
+    /// </remarks>
     [UnsupportedOSPlatform("windows")]
     internal static bool IsUnixRoot()
     {
@@ -98,9 +106,10 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
 
     /// <summary>
     /// Escapes command-line arguments that contain spaces or special characters.
+    /// Empty arguments are filtered out and not included in the output.
     /// </summary>
     /// <param name="args">The arguments to escape.</param>
-    /// <returns>An enumerable of escaped arguments.</returns>
+    /// <returns>An enumerable of escaped arguments, excluding empty values.</returns>
     internal static IEnumerable<string> EscapeArguments(string[] args)
     {
         foreach (var arg in args)
@@ -129,6 +138,6 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     /// </summary>
     /// <returns><c>true</c> if running on Windows; otherwise, <c>false</c>.</returns>
     internal static bool IsWindows() =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        OperatingSystem.IsWindows();
 
 }

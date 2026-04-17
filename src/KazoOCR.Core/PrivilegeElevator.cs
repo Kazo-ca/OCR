@@ -7,7 +7,7 @@ namespace KazoOCR.Core;
 /// <summary>
 /// Cross-platform implementation of privilege elevation.
 /// On Windows, uses WindowsIdentity to check admin status and "runas" verb for elevation.
-/// On Linux/macOS, checks for root user (UID 0) but does not support automatic elevation.
+/// On Linux/macOS, checks if the current user is "root" but does not support automatic elevation.
 /// </summary>
 public sealed class PrivilegeElevator : IPrivilegeElevator
 {
@@ -19,7 +19,7 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
             return IsWindowsAdministrator();
         }
 
-        // On Linux/macOS, check if running as root (UID 0)
+        // On Linux/macOS, check if running as the "root" user
         return IsUnixRoot();
     }
 
@@ -105,10 +105,10 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
 
     /// <summary>
     /// Escapes command-line arguments that contain spaces or special characters.
-    /// Null or empty arguments are filtered out and not included in the output.
+    /// Empty arguments are filtered out and not included in the output.
     /// </summary>
     /// <param name="args">The arguments to escape.</param>
-    /// <returns>An enumerable of escaped arguments, excluding null or empty values.</returns>
+    /// <returns>An enumerable of escaped arguments, excluding empty values.</returns>
     internal static IEnumerable<string> EscapeArguments(string[] args)
     {
         foreach (var arg in args)

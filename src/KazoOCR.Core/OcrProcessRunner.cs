@@ -167,31 +167,49 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
 
     /// <summary>
     /// Converts a Windows path to a WSL path.
-    /// For example: "C:\Users\Test\file.pdf" becomes "/mnt/c/Users/Test/file.pdf"
+    /// For example: "C:\Users\Test\file.pdf" becomes "/mnt/c/Users/Test/file.pdf".
+    /// Only absolute drive-letter paths are converted to <c>/mnt/&lt;drive&gt;/...</c>.
+    /// Relative paths are normalized by replacing backslashes with forward slashes.
+    /// Unsupported Windows path formats such as UNC paths, rooted paths without a drive letter,
+    /// and drive-relative paths cause a <see cref="NotSupportedException"/> to be thrown.
     /// </summary>
     /// <param name="windowsPath">The Windows path to convert.</param>
     /// <returns>The equivalent WSL path, or empty string if the input is null or empty.</returns>
     internal static string ConvertToWslPath(string windowsPath)
     {
-        // Handle null or empty inputs
         if (string.IsNullOrEmpty(windowsPath))
         {
             return string.Empty;
         }
 
-        // Check if the path is an absolute Windows path with a drive letter
+        if (windowsPath.StartsWith(@"\\", StringComparison.Ordinal) ||
+            windowsPath.StartsWith("//", StringComparison.Ordinal))
+        {
+            throw new NotSupportedException("UNC paths are not supported for WSL path conversion.");
+        }
+
         if (windowsPath.Length >= 2 && char.IsLetter(windowsPath[0]) && windowsPath[1] == ':')
         {
-            var driveLetter = char.ToLowerInvariant(windowsPath[0]);
-            var remainingPath = windowsPath.Length > 2 ? windowsPath[2..] : string.Empty;
+            if (windowsPath.Length == 2)
+            {
+                throw new NotSupportedException("Drive-relative Windows paths are not supported for WSL path conversion.");
+            }
 
-            // Replace backslashes with forward slashes
-            remainingPath = remainingPath.Replace('\\', '/');
+            if (windowsPath[2] != '\\' && windowsPath[2] != '/')
+            {
+                throw new NotSupportedException("Drive-relative Windows paths are not supported for WSL path conversion.");
+            }
+
+            var driveLetter = char.ToLowerInvariant(windowsPath[0]);
+            var remainingPath = windowsPath[2..].Replace('\\', '/');
 
             return $"/mnt/{driveLetter}{remainingPath}";
         }
 
-        // For relative paths, UNC paths, or whitespace-only strings, just replace backslashes
+        if (windowsPath[0] == '\\' || windowsPath[0] == '/')
+        {
+            throw new NotSupportedException("Rooted Windows paths without a drive letter are not supported for WSL path conversion.");
+        }
         return windowsPath.Replace('\\', '/');
     }
 

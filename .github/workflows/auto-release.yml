@@ -70,6 +70,9 @@ jobs:
           path: ./artifacts
           merge-multiple: true
 
+      - name: List artifacts
+        run: find ./artifacts -type f | head -20
+
       - name: Get tag name
         id: tag
         run: echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
@@ -90,11 +93,10 @@ jobs:
             ### Installation
             1. Download the appropriate archive for your platform
             2. Extract the contents
-            3. Run `kazoocr` (Linux/macOS) or `KazoOCR.CLI.exe` (Windows)
+            3. Run `KazoOCR.CLI` (Linux/macOS) or `KazoOCR.CLI.exe` (Windows)
           files: |
-            ./artifacts/kazoocr-linux-x64.tar.gz
-            ./artifacts/kazoocr-win-x64.zip
-            ./artifacts/kazoocr-osx-x64.tar.gz
+            ./artifacts/*.tar.gz
+            ./artifacts/*.zip
           draft: false
           prerelease: false
           generate_release_notes: true

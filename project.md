@@ -109,6 +109,7 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 
 - Target framework : `net10.0` (MAUI : `net10.0-windows10.0.19041.0`)
 - `Directory.Build.props` : LangVersion=latest, Nullable=enable, ImplicitUsings=enable
+- `.editorconfig` : analyzer rules and code style configuration
 - Branches : `main` ← `develop` ← `feature/issue-X.Y`
 - CI/CD : GitHub Actions (PR check, auto-release, DockerHub push)
 
@@ -156,11 +157,24 @@ The project uses `.editorconfig` to enforce code quality rules. Key guidelines:
    return lines.Any(line => line.Equals(target));
    ```
 
-4. **Dispose IDisposable objects properly** — Use `using` statements or declarations:
-   ```csharp
-   // Good: using declaration
-   using var cts = new CancellationTokenSource();
-   ```
+### IDisposable Pattern
+- Always dispose `IDisposable` objects using `using` or `using var` statements
+- Example: `using var cts = new CancellationTokenSource();`
+
+### Path Handling
+- Prefer `Path.Join()` over `Path.Combine()` to avoid silent argument dropping
+- `Path.Combine()` resets to root if any argument is rooted; `Path.Join()` simply concatenates
+- When combining paths with potentially untrusted input, sanitize with `Path.GetFileName()`
+
+```csharp
+// GOOD: Use Path.Join for safe path concatenation
+var fullPath = Path.Join(tempDir, "file.pdf");
+var directoryName = $"folder-{id}";
+var result = Path.Join(basePath, directoryName);
+
+// BAD: Path.Combine may drop earlier arguments
+var fullPath = Path.Combine(tempDir, untrustedInput); // Could be rooted!
+```
 
 ### Analyzer Rules
 
@@ -170,6 +184,11 @@ Key diagnostics enabled as warnings in `.editorconfig`:
 - `CA1508` — Dead conditional code
 - `CA2000` — Dispose IDisposable before losing scope
 - `CA1860` — Prefer `Any()` over `Count() > 0`
+
+### Code Analysis
+- Configure analyzer rules in `.editorconfig`
+- Run `dotnet build` with warnings treated as errors (`TreatWarningsAsErrors=true`)
+- Review and fix all github-code-quality comments before merging
 
 ## Iterations
 

@@ -1,6 +1,6 @@
-# EditorConfig is awesome: https://EditorConfig.org
+# EditorConfig — KazoOCR
+# https://editorconfig.org
 
-# Top-most EditorConfig file
 root = true
 
 # All files
@@ -14,10 +14,23 @@ insert_final_newline = true
 
 # C# files
 [*.cs]
-# Code style defaults
+indent_size = 4
+
+# Code style
 csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = true:suggestion
+
+# Naming conventions
+dotnet_naming_rule.private_fields_should_be_camel_case.severity = warning
+dotnet_naming_rule.private_fields_should_be_camel_case.symbols = private_fields
+dotnet_naming_rule.private_fields_should_be_camel_case.style = camel_case_underscore
+
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+
+dotnet_naming_style.camel_case_underscore.capitalization = camel_case
+dotnet_naming_style.camel_case_underscore.required_prefix = _
 
 # Prefer conditional expression over if-else when assigning to the same variable
 dotnet_style_prefer_conditional_expression_over_assignment = true:warning
@@ -25,7 +38,14 @@ dotnet_style_prefer_conditional_expression_over_assignment = true:warning
 # Prefer explicit casts in the foreach source when the iteration variable is strongly typed
 dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed:warning
 
-# Avoid unused local variables
+# Code quality
+dotnet_code_quality.ca1816.api_surface = public
+dotnet_code_quality.ca2000.exclude_ordefault_methods = true
+
+# =============================================================================
+# Analyzer Rules — Prevent common issues
+# =============================================================================
+
 # CS0219: Variable is assigned but its value is never used
 dotnet_diagnostic.CS0219.severity = warning
 
@@ -35,14 +55,58 @@ dotnet_diagnostic.IDE0059.severity = warning
 # IDE0058: Expression value is never used
 dotnet_diagnostic.IDE0058.severity = suggestion
 
+# IDE0063: Use simple 'using' statement
+csharp_prefer_simple_using_statement = true:suggestion
+
 # CA1508: Avoid dead conditional code
 dotnet_diagnostic.CA1508.severity = warning
 
-# CA2000: Dispose objects before losing scope (IDisposable)
+# CA2000: Dispose objects before losing scope
 dotnet_diagnostic.CA2000.severity = warning
 
-# Prefer using 'Any()' instead of 'Count() > 0' or 'Count() != 0'
+# CA1062: Validate arguments of public methods
+dotnet_diagnostic.CA1062.severity = warning
+
+# CA1304: Specify CultureInfo
+dotnet_diagnostic.CA1304.severity = suggestion
+
+# CA1305: Specify IFormatProvider
+dotnet_diagnostic.CA1305.severity = suggestion
+
+# CA1307: Specify StringComparison
+dotnet_diagnostic.CA1307.severity = suggestion
+
+# CA1310: Specify StringComparison for correctness
+dotnet_diagnostic.CA1310.severity = warning
+
+# CA1860: Prefer using 'Any()' instead of 'Count() > 0' or 'Count() != 0'
 dotnet_diagnostic.CA1860.severity = warning
+
+# =============================================================================
+# Path handling best practices
+# =============================================================================
+
+# The following rules help prevent issues with Path.Combine silently dropping
+# earlier arguments when a subsequent argument is rooted:
+#
+# BEST PRACTICES:
+# 1. Use Path.Join() instead of Path.Combine() when concatenating paths
+#    - Path.Join() does not reset to root; it simply concatenates
+# 2. When using Path.Combine(), ensure second argument is a relative path
+#    - Use Path.GetFileName() to strip any potential root from file names
+# 3. Validate paths before combining them
+#
+# Example (GOOD):
+#   var fullPath = Path.Join(tempDir, "file.pdf");
+#   var directoryName = Path.GetFileName($"folder-{id}");
+#   var result = Path.Join(basePath, directoryName);
+#
+# Example (BAD):
+#   var fullPath = Path.Combine(tempDir, untrustedInput); // Could be rooted!
+
+# XML files
+[*.{xml,csproj,props,targets}]
+indent_size = 2
 
 # JSON files
 [*.json]
@@ -52,10 +116,14 @@ indent_size = 2
 [*.{yml,yaml}]
 indent_size = 2
 
-# XML files
-[*.{xml,csproj,props,targets}]
-indent_size = 2
-
 # Markdown files
 [*.md]
 trim_trailing_whitespace = false
+
+# Shell scripts
+[*.sh]
+end_of_line = lf
+
+# Windows scripts
+[*.{cmd,bat,ps1}]
+end_of_line = crlf

@@ -6,11 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="CommandDotNet" Version="8.1.0" />
+    <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
+    <PackageReference Include="CommandDotNet" Version="8.1.1" />
+    <PackageReference Include="CommandDotNet.IoC.MicrosoftDependencyInjection" Version="7.1.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.6" />
   </ItemGroup>
 
 </Project>

@@ -271,7 +271,7 @@ public class OcrProcessRunnerTests
     }
 
     [Fact]
-    public void ConvertToWslPath_WithNull_ReturnsNull()
+    public void ConvertToWslPath_WithNull_ReturnsEmptyString()
     {
         // Arrange
         string? nullPath = null;
@@ -280,7 +280,7 @@ public class OcrProcessRunnerTests
         var result = OcrProcessRunner.ConvertToWslPath(nullPath!);
 
         // Assert
-        Assert.Null(result);
+        Assert.Equal(string.Empty, result);
     }
 
     [Fact]

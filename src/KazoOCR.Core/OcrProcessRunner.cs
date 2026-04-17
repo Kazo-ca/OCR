@@ -170,9 +170,14 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     /// For example: "C:\Users\Test\file.pdf" becomes "/mnt/c/Users/Test/file.pdf"
     /// </summary>
     /// <param name="windowsPath">The Windows path to convert.</param>
-    /// <returns>The equivalent WSL path.</returns>
+    /// <returns>The equivalent WSL path, or empty string if the input is null or whitespace.</returns>
     internal static string ConvertToWslPath(string windowsPath)
     {
+        if (string.IsNullOrEmpty(windowsPath))
+        {
+            return string.Empty;
+        }
+
         if (string.IsNullOrWhiteSpace(windowsPath))
         {
             return windowsPath;

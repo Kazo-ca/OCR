@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Security.Principal;
 
@@ -57,8 +56,8 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     [UnsupportedOSPlatform("windows")]
     internal static bool IsUnixRoot()
     {
-        // Check if effective user ID is 0 (root)
-        return geteuid() == 0;
+        // On Unix-like systems, the root account name is "root".
+        return string.Equals(Environment.UserName, "root", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -131,7 +130,4 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     internal static bool IsWindows() =>
         RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
 
-    // P/Invoke for Unix geteuid()
-    [DllImport("libc", SetLastError = true)]
-    private static extern uint geteuid();
 }

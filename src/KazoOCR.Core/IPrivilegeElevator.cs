@@ -19,7 +19,8 @@ public interface IPrivilegeElevator
     /// Attempts to relaunch the current application with elevated privileges.
     /// </summary>
     /// <param name="args">The command-line arguments to pass to the relaunched process.</param>
-    /// <param name="cancellationToken">A cancellation token to cancel the operation.</param>
+    /// <param name="cancellationToken">A cancellation token to cancel the operation.
+    /// If already canceled before the call, an <see cref="OperationCanceledException"/> is thrown.</param>
     /// <returns>
     /// A task that resolves to <c>true</c> if the elevated process was started successfully;
     /// <c>false</c> if the user declined or elevation is not supported on this platform.
@@ -27,6 +28,8 @@ public interface IPrivilegeElevator
     /// <remarks>
     /// On Windows, this uses the "runas" verb to trigger a UAC prompt.
     /// On Linux/macOS, this returns <c>false</c> and the caller should suggest using sudo.
+    /// Note: Once the UAC prompt is shown on Windows, cancellation is not supported.
     /// </remarks>
+    /// <exception cref="OperationCanceledException">Thrown if the cancellation token is canceled before the call.</exception>
     Task<bool> RelaunchElevatedAsync(string[] args, CancellationToken cancellationToken = default);
 }

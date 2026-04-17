@@ -28,6 +28,9 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     {
         ArgumentNullException.ThrowIfNull(args);
 
+        // Honor cancellation token - check for pre-cancellation before attempting elevation
+        cancellationToken.ThrowIfCancellationRequested();
+
         // Elevation via runas is only supported on Windows
         if (!OperatingSystem.IsWindows())
         {
@@ -50,9 +53,14 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     }
 
     /// <summary>
-    /// Checks if the current process is running as root on Unix-like systems.
+    /// Checks if the current process is running as the root user on Unix-like systems.
+    /// This checks if <see cref="Environment.UserName"/> equals "root" (case-sensitive).
     /// </summary>
-    /// <returns><c>true</c> if running as root (UID 0); otherwise, <c>false</c>.</returns>
+    /// <returns><c>true</c> if the current user is "root"; otherwise, <c>false</c>.</returns>
+    /// <remarks>
+    /// This is a simplified check that compares the username against "root".
+    /// On most Unix-like systems, this correctly identifies the superuser account.
+    /// </remarks>
     [UnsupportedOSPlatform("windows")]
     internal static bool IsUnixRoot()
     {
@@ -97,9 +105,10 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
 
     /// <summary>
     /// Escapes command-line arguments that contain spaces or special characters.
+    /// Null or empty arguments are filtered out and not included in the output.
     /// </summary>
     /// <param name="args">The arguments to escape.</param>
-    /// <returns>An enumerable of escaped arguments.</returns>
+    /// <returns>An enumerable of escaped arguments, excluding null or empty values.</returns>
     internal static IEnumerable<string> EscapeArguments(string[] args)
     {
         foreach (var arg in args)
@@ -128,6 +137,6 @@ public sealed class PrivilegeElevator : IPrivilegeElevator
     /// </summary>
     /// <returns><c>true</c> if running on Windows; otherwise, <c>false</c>.</returns>
     internal static bool IsWindows() =>
-        RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        OperatingSystem.IsWindows();
 
 }

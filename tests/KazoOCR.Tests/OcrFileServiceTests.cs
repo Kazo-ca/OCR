@@ -338,7 +338,7 @@ public class OcrFileServiceTests
     }
 
     [Fact]
-    public void IsAlreadyProcessed_WithDifferentCaseSuffix_ReturnsTrue()
+    public void IsAlreadyProcessed_IsCaseInsensitive_WhenSuffixDiffersInCase()
     {
         // Arrange
         var filePath = "document_OCR.pdf";
@@ -347,7 +347,7 @@ public class OcrFileServiceTests
         // Act
         var result = _service.IsAlreadyProcessed(filePath, suffix);
 
-        // Assert - Should be case insensitive
+        // Assert - Comparison should be case insensitive
         result.Should().BeTrue();
     }
 

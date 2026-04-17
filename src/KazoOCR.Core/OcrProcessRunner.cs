@@ -132,40 +132,48 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     }
 
     /// <summary>
-    /// Adds the OCRmyPDF arguments from the settings as discrete command-line arguments.
-    /// Each flag and value is appended separately so that callers can use
-    /// <see cref="ProcessStartInfo.ArgumentList"/> safely without manual escaping.
+    /// Builds the OCRmyPDF command-line arguments from the settings.
     /// </summary>
-    /// <param name="arguments">The argument collection to populate.</param>
     /// <param name="settings">The OCR settings.</param>
-    internal static void AddOcrArguments(ICollection<string> arguments, OcrSettings settings)
+    /// <returns>The command-line arguments string.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="OcrSettings.Optimize"/> is outside the valid range (0-3).</exception>
+    internal static string BuildOcrArguments(OcrSettings settings)
     {
-        ArgumentNullException.ThrowIfNull(arguments);
         ArgumentNullException.ThrowIfNull(settings);
+
+        if (settings.Optimize < 0 || settings.Optimize > 3)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.Optimize,
+                "Optimize level must be between 0 and 3.");
+        }
+
+        var args = new List<string>();
 
         if (settings.Deskew)
         {
-            arguments.Add("--deskew");
+            args.Add("--deskew");
         }
 
         if (settings.Clean)
         {
-            arguments.Add("--clean");
+            args.Add("--clean");
         }
 
         if (settings.Rotate)
         {
-            arguments.Add("--rotate-pages");
+            args.Add("--rotate-pages");
         }
 
-        arguments.Add("--optimize");
-        arguments.Add(settings.Optimize.ToString());
+        args.Add($"--optimize {settings.Optimize}");
 
         if (!string.IsNullOrWhiteSpace(settings.Languages))
         {
-            arguments.Add("-l");
-            arguments.Add(settings.Languages);
+            args.Add($"-l {settings.Languages}");
         }
+
+        return string.Join(" ", args);
     }
 
     /// <summary>

@@ -149,6 +149,40 @@ public class OcrProcessRunnerTests
         Assert.DoesNotContain("-l", result);
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(-100)]
+    [InlineData(4)]
+    [InlineData(5)]
+    [InlineData(100)]
+    public void BuildOcrArguments_WithInvalidOptimizeLevel_ThrowsArgumentOutOfRangeException(int invalidOptimize)
+    {
+        // Arrange
+        var settings = new OcrSettings { Optimize = invalidOptimize };
+
+        // Act & Assert
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(
+            () => OcrProcessRunner.BuildOcrArguments(settings));
+        Assert.Contains("Optimize level must be between 0 and 3", exception.Message);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void BuildOcrArguments_WithValidOptimizeLevel_DoesNotThrow(int validOptimize)
+    {
+        // Arrange
+        var settings = new OcrSettings { Optimize = validOptimize };
+
+        // Act
+        var result = OcrProcessRunner.BuildOcrArguments(settings);
+
+        // Assert
+        Assert.Contains($"--optimize {validOptimize}", result);
+    }
+
     #endregion
 
     #region ConvertToWslPath Tests
@@ -206,16 +240,13 @@ public class OcrProcessRunnerTests
     }
 
     [Fact]
-    public void ConvertToWslPath_WithDriveLetterOnly_ReturnsRootMount()
+    public void ConvertToWslPath_WithDriveLetterOnly_ThrowsNotSupportedException()
     {
         // Arrange
         var windowsPath = @"C:";
 
-        // Act
-        var result = OcrProcessRunner.ConvertToWslPath(windowsPath);
-
-        // Assert
-        Assert.Equal("/mnt/c", result);
+        // Act & Assert
+        Assert.Throws<NotSupportedException>(() => OcrProcessRunner.ConvertToWslPath(windowsPath));
     }
 
     [Fact]
@@ -245,16 +276,13 @@ public class OcrProcessRunnerTests
     }
 
     [Fact]
-    public void ConvertToWslPath_WithUnixPath_ReturnsUnchanged()
+    public void ConvertToWslPath_WithUnixPath_ThrowsNotSupportedException()
     {
         // Arrange
         var unixPath = "/home/user/file.pdf";
 
-        // Act
-        var result = OcrProcessRunner.ConvertToWslPath(unixPath);
-
-        // Assert
-        Assert.Equal("/home/user/file.pdf", result);
+        // Act & Assert - Unix paths (starting with /) are not supported
+        Assert.Throws<NotSupportedException>(() => OcrProcessRunner.ConvertToWslPath(unixPath));
     }
 
     [Fact]

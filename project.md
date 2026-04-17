@@ -12,6 +12,8 @@ KazoOCR.sln
 │   ├── KazoOCR.Core/          # Bibliothèque métier (.NET 10 classlib)
 │   ├── KazoOCR.CLI/           # Application console + Watch (.NET 10)
 │   ├── KazoOCR.Docker/        # Worker Service — lance Core en mode watch (.NET 10)
+│   ├── KazoOCR.Api/           # ASP.NET Core Web API + Worker intégré (.NET 10)  [iteration-5]
+│   ├── KazoOCR.Web/           # Blazor Web App — interface web (.NET 10)          [iteration-5]
 │   └── KazoOCR.UI/            # Application MAUI (Windows Desktop)
 ├── tests/
 │   └── KazoOCR.Tests/         # Tests xUnit
@@ -29,7 +31,9 @@ KazoOCR.sln
 │   ├── cli.md
 │   ├── docker.md
 │   ├── service.md
-│   └── ui.md
+│   ├── ui.md
+│   ├── api.md                 # Documentation Web API          [iteration-5]
+│   └── web.md                 # Documentation Web UI           [iteration-5]
 └── README.md
 ```
 
@@ -38,8 +42,10 @@ KazoOCR.sln
 ```
 KazoOCR.CLI ──────► KazoOCR.Core
 KazoOCR.Docker ───► KazoOCR.Core
+KazoOCR.Api ──────► KazoOCR.Core                              [iteration-5]
+KazoOCR.Web ──────► KazoOCR.Api (HTTP)                        [iteration-5]
 KazoOCR.UI ───────► KazoOCR.Core
-KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
+KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI + KazoOCR.Api + KazoOCR.Web
 ```
 
 ## Composants clés
@@ -65,6 +71,30 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 - `BackgroundService` minimal qui référence Core et lance `WatcherService`
 - Configuration via variables d'environnement (`KAZO_WATCH_PATH`, `KAZO_SUFFIX`, `KAZO_LANGUAGES`, etc.)
 - Image Docker multi-stage : SDK pour build, runtime + ocrmypdf pour exécution
+- **[iteration-5]** Reconfigured to host both `KazoOCR.Api` and `KazoOCR.Web` alongside the worker
+
+### KazoOCR.Api (ASP.NET Core Web API) — [iteration-5]
+- ASP.NET Core 10 project exposing a REST API consumed by `KazoOCR.Web`
+- **Embedded `BackgroundService`** — runs `WatcherService` from Core in-process
+- **Swagger / OpenAPI** documentation via `Swashbuckle.AspNetCore`
+- **Authentication**:
+  - `KAZO_API_KEY` env var — all requests require `X-Api-Key` header when set; no auth enforced if unset
+  - `KAZO_DEFAULT_PASSWORD` env var — used for web-UI login; if unset, password creation is prompted on first run
+- **Configuration**:
+  | Variable | Default | Description |
+  |----------|---------|-------------|
+  | `KAZO_API_PORT` | `5000` | HTTP port exposed by the API |
+  | `KAZO_API_KEY` | *(none)* | Static API key; authentication disabled when empty |
+  | `KAZO_DEFAULT_PASSWORD` | *(none)* | Web-UI password; first-run wizard when empty |
+  | `KAZO_WATCH_PATH` | `/data` | Folder watched by the embedded worker |
+- Endpoints: `POST /ocr/process`, `GET /ocr/status/{id}`, `GET /ocr/jobs`, `DELETE /ocr/jobs/{id}`, `GET /health`
+
+### KazoOCR.Web (Blazor Web App) — [iteration-5]
+- Blazor Server or Blazor Web App (.NET 10) served alongside `KazoOCR.Api` (separate service in docker-compose)
+- **Pages**: Dashboard (job list + status), Upload (drag-and-drop PDF), Settings (OCR options), First-run wizard (password creation)
+- Communicates with `KazoOCR.Api` via typed `HttpClient`
+- **Port** configurable via `KAZO_WEB_PORT` (default `5001`)
+- Responsive layout; no JavaScript framework — pure Blazor components
 
 ### KazoOCR.UI (MAUI)
 - Vue principale avec Drag & Drop de fichiers PDF
@@ -85,8 +115,13 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 | CLI | `Microsoft.Extensions.Hosting` | Host pour le mode Watch / Service Windows |
 | CLI | `Microsoft.Extensions.Hosting.WindowsServices` | Support `UseWindowsService()` |
 | Docker | `Microsoft.Extensions.Hosting` | Worker Service |
+| Api | `Microsoft.AspNetCore.OpenApi` | OpenAPI / Swagger support |
+| Api | `Swashbuckle.AspNetCore` | Swagger UI |
+| Api | `Microsoft.Extensions.Hosting` | Host + BackgroundService |
+| Web | `Microsoft.AspNetCore.Components.WebAssembly` | Blazor Web App |
 | UI | `Microsoft.Maui.*` | Framework UI |
 | Tests | `xunit`, `Moq`, `FluentAssertions` | Tests unitaires |
+| Tests | `Microsoft.AspNetCore.Mvc.Testing` | Integration tests (WebApplicationFactory) |
 
 ## Modes d'exécution
 
@@ -98,6 +133,8 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 | **Service install** | `kazoocr service install` | Installe le service Windows |
 | **Service uninstall** | `kazoocr service uninstall` | Désinstalle le service Windows |
 | **Docker** | `docker-compose up` | Conteneur avec volume monté |
+| **API** | `http://localhost:5000/swagger` | Swagger UI |
+| **Web UI** | `http://localhost:5001` | Interface web Blazor |
 
 ## Cross-platform : stratégie WSL
 
@@ -196,3 +233,4 @@ Key diagnostics enabled as warnings in `.editorconfig`:
 2. **CLI & Environnement** : CommandDotNet, détection WSL, élévation de privilèges
 3. **Watch, Docker & Distribution** : commande watch, Worker Service, Dockerfile, docker-compose
 4. **Service Windows & UI MAUI** : installation service Windows, interface MAUI Drag & Drop
+5. **Web API & Web UI** : `KazoOCR.Api` (ASP.NET Core REST API + Swagger + auth + embedded worker), `KazoOCR.Web` (Blazor dashboard + upload + first-run wizard), reconfiguration Docker pour multi-service, tests d'intégration Web

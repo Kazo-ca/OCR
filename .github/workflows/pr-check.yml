@@ -5,6 +5,10 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened, ready_for_review]
 
+# Minimal permissions for security
+permissions:
+  contents: read
+
 # Skip for draft PRs
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -37,7 +41,6 @@ jobs:
     if: github.event.pull_request.draft == false
     name: Test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
-    needs: build
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]

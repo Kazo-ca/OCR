@@ -82,7 +82,20 @@ jobs:
             const nextIterLabel = `iteration-${minIter}`;
             core.info(`Next iteration to promote: ${nextIterLabel}`);
 
-            // --- 3. Apply Ready label to all open non-OnHold issues in that iteration ---
+            // --- 3. Ensure the Ready label exists in the repo ---
+            try {
+              await github.rest.issues.getLabel({ owner, repo, name: READY_LABEL });
+            } catch {
+              await github.rest.issues.createLabel({
+                owner, repo,
+                name: READY_LABEL,
+                color: "0E8A16",
+                description: "Ready to start — next iteration promoted"
+              });
+              core.info(`Created label: ${READY_LABEL}`);
+            }
+
+            // --- 4. Apply Ready label to all open non-OnHold issues in that iteration ---
             const toPromote = openIssues.filter(i =>
               !i.labels.some(l => l.name === ONHOLD_LABEL) &&
               i.labels.some(l => l.name === nextIterLabel)

@@ -171,7 +171,7 @@ Key diagnostics enabled as warnings in `.editorconfig`:
 - `CA2000` — Dispose IDisposable before losing scope
 - `CA1860` — Prefer `Any()` over `Count() > 0`
 
-## Itérations
+## Iterations
 
 1. **Fondations & Core Logic** : structure solution, services de renommage/validation, wrapper process, README/docs, tests
 2. **CLI & Environnement** : CommandDotNet, détection WSL, élévation de privilèges

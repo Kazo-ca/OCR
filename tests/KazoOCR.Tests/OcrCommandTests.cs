@@ -117,6 +117,32 @@ public class OcrCommandTests
         result.Should().Be((int)ExitCodes.InvalidArguments);
     }
 
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(4)]
+    [InlineData(100)]
+    [InlineData(-100)]
+    public async Task Execute_WithOutOfRangeOptimize_ReturnsInvalidArguments(int invalidOptimize)
+    {
+        // Act
+        var result = await _command.Execute(
+            input: "/path/to/document.pdf",
+            suffix: "_OCR",
+            languages: "fra+eng",
+            deskew: false,
+            clean: false,
+            rotate: false,
+            optimize: invalidOptimize);
+
+        // Assert
+        result.Should().Be((int)ExitCodes.InvalidArguments);
+        _processRunnerMock.Verify(x => x.RunAsync(
+            It.IsAny<OcrSettings>(),
+            It.IsAny<string>(),
+            It.IsAny<string>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     #endregion
 
     #region Execute Tests - Single File
@@ -406,12 +432,14 @@ public class OcrCommandTests
 
         try
         {
+            _fileServiceMock.Setup(x => x.ValidateInput(pdfFile1))
+                .Returns(ValidationResult.Success());
+            _fileServiceMock.Setup(x => x.ValidateInput(pdfFile2))
+                .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.IsAlreadyProcessed(pdfFile1, "_OCR"))
                 .Returns(false);
             _fileServiceMock.Setup(x => x.IsAlreadyProcessed(pdfFile2, "_OCR"))
                 .Returns(true);
-            _fileServiceMock.Setup(x => x.ValidateInput(pdfFile1))
-                .Returns(ValidationResult.Success());
             _fileServiceMock.Setup(x => x.ComputeOutputPath(pdfFile1, "_OCR"))
                 .Returns(Path.Join(tempDir, "doc1_OCR.pdf"));
             _processRunnerMock.Setup(x => x.RunAsync(

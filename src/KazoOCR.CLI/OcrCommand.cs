@@ -53,15 +53,22 @@ public class OcrCommand
         [Option('i', Description = "Source file or folder")] string input,
         [Option('s', Description = "Suffix for output file")] string suffix = "_OCR",
         [Option('l', Description = "Tesseract language codes")] string languages = "fra+eng",
-        [Option(Description = "Enable deskew correction")] bool deskew = false,
+        [Option(Description = "Enable deskew correction")] bool deskew = true,
         [Option(Description = "Enable Unpaper cleaning")] bool clean = false,
-        [Option(Description = "Enable orientation correction")] bool rotate = false,
+        [Option(Description = "Enable orientation correction")] bool rotate = true,
         [Option(Description = "Compression level (0-3)")] int optimize = 1,
         CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(input))
         {
             _logger.LogError("Input path is required.");
+            return (int)ExitCodes.InvalidArguments;
+        }
+
+        // Validate optimize range early
+        if (optimize < 0 || optimize > 3)
+        {
+            _logger.LogError("Optimize level must be between 0 and 3. Got: {Optimize}", optimize);
             return (int)ExitCodes.InvalidArguments;
         }
 
@@ -87,7 +94,31 @@ public class OcrCommand
     {
         _logger.LogInformation("Processing directory: {Directory}", directoryPath);
 
-        var pdfFiles = Directory.GetFiles(directoryPath, "*.pdf", SearchOption.AllDirectories);
+        string[] pdfFiles;
+        try
+        {
+            pdfFiles = Directory.GetFiles(directoryPath, "*.pdf", SearchOption.AllDirectories);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Access denied while enumerating PDF files in directory '{Directory}': {Message}", directoryPath, ex.Message);
+            return (int)ExitCodes.GeneralError;
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            _logger.LogError(ex, "Directory not found while enumerating PDF files in directory '{Directory}': {Message}", directoryPath, ex.Message);
+            return (int)ExitCodes.GeneralError;
+        }
+        catch (PathTooLongException ex)
+        {
+            _logger.LogError(ex, "Path too long while enumerating PDF files in directory '{Directory}': {Message}", directoryPath, ex.Message);
+            return (int)ExitCodes.GeneralError;
+        }
+        catch (IOException ex)
+        {
+            _logger.LogError(ex, "I/O error while enumerating PDF files in directory '{Directory}': {Message}", directoryPath, ex.Message);
+            return (int)ExitCodes.GeneralError;
+        }
 
         if (pdfFiles.Length == 0)
         {
@@ -105,13 +136,6 @@ public class OcrCommand
             {
                 _logger.LogWarning("Processing cancelled.");
                 return (int)ExitCodes.GeneralError;
-            }
-
-            // Skip already processed files
-            if (_fileService.IsAlreadyProcessed(file, suffix))
-            {
-                _logger.LogInformation("Skipping already processed file: {File}", file);
-                continue;
             }
 
             var result = await ProcessFileAsync(file, suffix, languages, deskew, clean, rotate, optimize, cancellationToken);
@@ -154,7 +178,7 @@ public class OcrCommand
             return (int)ExitCodes.InvalidArguments;
         }
 
-        // Check if already processed
+        // Check if already processed (centralized check)
         if (_fileService.IsAlreadyProcessed(filePath, suffix))
         {
             _logger.LogInformation("File already processed: {File}", filePath);
@@ -175,16 +199,24 @@ public class OcrCommand
         // Compute output path
         var outputPath = _fileService.ComputeOutputPath(filePath, suffix);
 
-        // Run OCR
-        var result = await _processRunner.RunAsync(settings, filePath, outputPath, cancellationToken);
-
-        if (result.IsSuccess)
+        // Run OCR with exception handling
+        try
         {
-            _logger.LogInformation("Successfully processed: {File} -> {Output}", filePath, outputPath);
-            return (int)ExitCodes.Success;
-        }
+            var result = await _processRunner.RunAsync(settings, filePath, outputPath, cancellationToken);
 
-        _logger.LogError("OCR processing failed for {File}: {Error}", filePath, result.StandardError);
-        return (int)ExitCodes.OcrFailed;
+            if (result.IsSuccess)
+            {
+                _logger.LogInformation("Successfully processed: {File} -> {Output}", filePath, outputPath);
+                return (int)ExitCodes.Success;
+            }
+
+            _logger.LogError("OCR processing failed for {File}: {Error}", filePath, result.StandardError);
+            return (int)ExitCodes.OcrFailed;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogWarning("OCR processing was canceled for {File}", filePath);
+            return (int)ExitCodes.GeneralError;
+        }
     }
 }

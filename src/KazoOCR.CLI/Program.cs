@@ -18,7 +18,7 @@ services.AddSingleton<IOcrFileService, OcrFileService>();
 services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
 services.AddTransient<OcrCommand>();
 
-var serviceProvider = services.BuildServiceProvider();
+await using var serviceProvider = services.BuildServiceProvider();
 
 // Configure and run the AppRunner
 return await new AppRunner<RootCommand>()

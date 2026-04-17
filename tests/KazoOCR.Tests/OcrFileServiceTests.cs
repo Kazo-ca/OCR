@@ -26,14 +26,14 @@ public class OcrFileServiceTests
     public void ComputeOutputPath_WithFullPath_ReturnsSuffixedPath()
     {
         // Arrange
-        var inputPath = Path.Combine("C:", "Users", "Test", "Documents", "document.pdf");
+        var inputPath = @"C:\Users\Test\Documents\document.pdf";
         var suffix = "_OCR";
 
         // Act
         var result = _service.ComputeOutputPath(inputPath, suffix);
 
         // Assert
-        var expected = Path.Combine("C:", "Users", "Test", "Documents", "document_OCR.pdf");
+        var expected = @"C:\Users\Test\Documents\document_OCR.pdf";
         Assert.Equal(expected, result);
     }
 

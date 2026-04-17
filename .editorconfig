@@ -22,7 +22,7 @@ csharp_style_var_elsewhere = true:suggestion
 # Prefer conditional expression over if-else when assigning to the same variable
 dotnet_style_prefer_conditional_expression_over_assignment = true:warning
 
-# Prefer LINQ methods (Where, Any, etc.) over foreach with filtering
+# Prefer explicit casts in the foreach source when the iteration variable is strongly typed
 dotnet_style_prefer_foreach_explicit_cast_in_source = when_strongly_typed:warning
 
 # Avoid unused local variables

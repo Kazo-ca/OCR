@@ -60,7 +60,7 @@ public class EnvironmentDetectorTests
     }
 
     [Fact]
-    public async Task IsWslAvailableAsync_SupportsCancellation()
+    public async Task IsWslAvailableAsync_OnNonWindows_ReturnsFalseImmediately()
     {
         // Skip on Windows since behavior differs
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -72,12 +72,12 @@ public class EnvironmentDetectorTests
         var detector = new EnvironmentDetector();
         using var cts = new CancellationTokenSource();
 
-        // Act - should not throw even with pre-cancelled token on non-Windows
-        // because it returns false immediately
+        // Act - On non-Windows, method returns false immediately without starting any process
+        // so it doesn't matter if the token is cancelled or not
         var result = await detector.IsWslAvailableAsync(cts.Token);
 
         // Assert
-        result.Should().BeFalse();
+        result.Should().BeFalse("WSL check returns false immediately on non-Windows");
     }
 
     #endregion

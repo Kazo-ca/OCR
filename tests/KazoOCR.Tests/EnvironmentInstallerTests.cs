@@ -21,6 +21,12 @@ public class EnvironmentInstallerTests
     }
 
     [Fact]
+    public void DefaultPackages_ContainsTesseractEng()
+    {
+        EnvironmentInstaller.DefaultPackages.Should().Contain("tesseract-ocr-eng");
+    }
+
+    [Fact]
     public void DefaultPackages_ContainsUnpaper()
     {
         EnvironmentInstaller.DefaultPackages.Should().Contain("unpaper");
@@ -29,7 +35,7 @@ public class EnvironmentInstallerTests
     [Fact]
     public void DefaultPackages_HasCorrectCount()
     {
-        EnvironmentInstaller.DefaultPackages.Should().HaveCount(3);
+        EnvironmentInstaller.DefaultPackages.Should().HaveCount(4);
     }
 
     #endregion
@@ -93,6 +99,39 @@ public class EnvironmentInstallerTests
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(
             async () => await installer.InstallTesseractLanguageAsync("   "));
+    }
+
+    [Fact]
+    public async Task InstallTesseractLanguageAsync_WithShellInjection_ThrowsArgumentException()
+    {
+        // Arrange
+        var installer = new EnvironmentInstaller();
+
+        // Act & Assert - attempt shell injection with semicolon
+        await Assert.ThrowsAsync<ArgumentException>(
+            async () => await installer.InstallTesseractLanguageAsync("fra;rm -rf /"));
+    }
+
+    [Fact]
+    public async Task InstallTesseractLanguageAsync_WithSpecialCharacters_ThrowsArgumentException()
+    {
+        // Arrange
+        var installer = new EnvironmentInstaller();
+
+        // Act & Assert - attempt with special characters
+        await Assert.ThrowsAsync<ArgumentException>(
+            async () => await installer.InstallTesseractLanguageAsync("fra&&echo"));
+    }
+
+    [Fact]
+    public async Task InstallTesseractLanguageAsync_WithQuotes_ThrowsArgumentException()
+    {
+        // Arrange
+        var installer = new EnvironmentInstaller();
+
+        // Act & Assert - attempt with quotes
+        await Assert.ThrowsAsync<ArgumentException>(
+            async () => await installer.InstallTesseractLanguageAsync("fra\"echo"));
     }
 
     #endregion

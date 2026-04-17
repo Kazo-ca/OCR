@@ -39,8 +39,21 @@ public sealed class KazoOcrCommands
         Console.WriteLine("=== KazoOCR Environment Check ===\n");
 
         var isWindows = _detector.IsWindows();
-        Console.WriteLine($"Operating System: {(isWindows ? "Windows" : "Linux/macOS")}");
+        var isMacOs = OperatingSystem.IsMacOS();
+        var operatingSystemLabel = isWindows ? "Windows" : isMacOs ? "macOS" : "Linux";
+        Console.WriteLine($"Operating System: {operatingSystemLabel}");
         Console.WriteLine();
+
+        // Check for unsupported macOS
+        if (isMacOs)
+        {
+            Console.WriteLine("ERROR: Automatic dependency installation is not supported on macOS.");
+            Console.WriteLine("This command currently supports Windows (with WSL) and Linux systems using apt-get.");
+            Console.WriteLine();
+            Console.WriteLine("Please install the required dependencies manually using Homebrew:");
+            Console.WriteLine("  brew install ocrmypdf tesseract tesseract-lang unpaper");
+            return 1;
+        }
 
         // Check WSL (Windows only)
         if (isWindows)
@@ -85,8 +98,8 @@ public sealed class KazoOcrCommands
 
         Console.WriteLine();
 
-        // Check if all dependencies are installed
-        if (ocrMyPdfInstalled && tesseractFraInstalled && unpaperInstalled)
+        // Check if all dependencies are installed (including eng)
+        if (ocrMyPdfInstalled && tesseractFraInstalled && tesseractEngInstalled && unpaperInstalled)
         {
             Console.WriteLine("All dependencies are installed. KazoOCR is ready to use!");
             return 0;
@@ -94,7 +107,7 @@ public sealed class KazoOcrCommands
 
         // Offer to install missing dependencies
         Console.WriteLine("Some dependencies are missing. Installing...\n");
-        Console.WriteLine("Running: sudo apt-get update && sudo apt-get install -y ocrmypdf tesseract-ocr-fra unpaper\n");
+        Console.WriteLine("Running: sudo apt-get update && sudo apt-get install -y ocrmypdf tesseract-ocr-fra tesseract-ocr-eng unpaper\n");
 
         var result = await _installer.InstallDependenciesAsync(cancellationToken).ConfigureAwait(false);
 

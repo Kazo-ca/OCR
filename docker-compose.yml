@@ -1,0 +1,16 @@
+services:
+  kazoocr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    environment:
+      KAZO_WATCH_PATH: /watch
+      KAZO_SUFFIX: _OCR
+      KAZO_LANGUAGES: fra+eng
+      KAZO_DESKEW: "false"
+      KAZO_CLEAN: "false"
+      KAZO_ROTATE: "false"
+      KAZO_OPTIMIZE: "1"
+    volumes:
+      - ./watch:/watch
+    restart: unless-stopped

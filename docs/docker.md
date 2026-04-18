@@ -14,7 +14,7 @@ docker compose up --build
 
 # Or build and run manually
 docker build -t kazoocr:latest -f docker/Dockerfile .
-docker run -v /path/to/pdfs:/data kazoocr:latest
+docker run -v /path/to/pdfs:/watch kazoocr:latest
 ```
 
 ## Environment Variables

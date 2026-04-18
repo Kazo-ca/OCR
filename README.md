@@ -52,7 +52,7 @@ kazoocr install
 docker compose up --build
 
 # Or directly with docker run
-docker run -v /path/to/pdfs:/data kazoocr:latest
+docker run -v /path/to/pdfs:/watch kazoocr:latest
 ```
 
 ### MAUI (Windows Desktop)

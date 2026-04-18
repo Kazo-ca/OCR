@@ -49,7 +49,7 @@ kazoocr install
 
 ```bash
 # Using docker-compose
-docker-compose -f docker/docker-compose.yml up
+docker compose up --build
 
 # Or directly with docker run
 docker run -v /path/to/pdfs:/data kazoocr:latest
@@ -97,9 +97,9 @@ KazoOCR.sln
 │   └── KazoOCR.UI/        # MAUI Desktop application
 ├── tests/
 │   └── KazoOCR.Tests/     # xUnit tests
+├── docker-compose.yml
 ├── docker/
 │   ├── Dockerfile
-│   └── docker-compose.yml
 └── docs/                  # Documentation
 ```
 

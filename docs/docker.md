@@ -10,7 +10,7 @@
 
 ```bash
 # Using docker-compose
-docker-compose -f docker/docker-compose.yml up
+docker compose up --build
 
 # Or build and run manually
 docker build -t kazoocr:latest -f docker/Dockerfile .
@@ -21,7 +21,7 @@ docker run -v /path/to/pdfs:/data kazoocr:latest
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `KAZO_WATCH_PATH` | Path to watch for PDFs | `/data` |
+| `KAZO_WATCH_PATH` | Path to watch for PDFs | `/watch` |
 | `KAZO_SUFFIX` | Output file suffix | `_OCR` |
 | `KAZO_LANGUAGES` | Tesseract language codes | `fra+eng` |
 | `KAZO_DESKEW` | Enable deskew correction | `false` |
@@ -32,17 +32,21 @@ docker run -v /path/to/pdfs:/data kazoocr:latest
 ## Docker Compose
 
 ```yaml
-version: '3.8'
 services:
   kazoocr:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     volumes:
-      - /path/to/pdfs:/data
+      - ./watch:/watch
     environment:
-      - KAZO_WATCH_PATH=/data
+      - KAZO_WATCH_PATH=/watch
+      - KAZO_SUFFIX=_OCR
       - KAZO_LANGUAGES=fra+eng
+      - KAZO_DESKEW=false
+      - KAZO_CLEAN=false
+      - KAZO_ROTATE=false
+      - KAZO_OPTIMIZE=1
     restart: unless-stopped
 ```
 
@@ -54,10 +58,10 @@ The Dockerfile uses a multi-stage build:
 
 ## Volumes
 
-Mount your PDF folder to `/data` in the container:
+Mount your PDF folder to `/watch` in the container:
 
 ```bash
-docker run -v /home/user/documents:/data kazoocr:latest
+docker run -v /home/user/documents:/watch kazoocr:latest
 ```
 
 ## Logs

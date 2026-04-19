@@ -1,15 +1,15 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework Condition="'$(BuildMAUI)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
-    <TargetFramework Condition="'$(BuildMAUI)' != 'true'">net10.0</TargetFramework>
-    <IsPackable>false</IsPackable>
-  </PropertyGroup>
-
   <!-- Propagate BuildMAUI from UI project -->
   <PropertyGroup>
     <BuildMAUI Condition="'$(BuildMAUI)' == '' AND '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">true</BuildMAUI>
     <BuildMAUI Condition="'$(BuildMAUI)' == ''">false</BuildMAUI>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework Condition="'$(BuildMAUI)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(BuildMAUI)' != 'true'">net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(BuildMAUI)' == 'true'">
@@ -30,9 +30,12 @@
     <ProjectReference Include="..\..\src\KazoOCR.Core\KazoOCR.Core.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.CLI\KazoOCR.CLI.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Docker\KazoOCR.Docker.csproj" />
-    <ProjectReference Include="..\..\src\KazoOCR.UI\KazoOCR.UI.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Api\KazoOCR.Api.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Web\KazoOCR.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
+    <ProjectReference Include="..\..\src\KazoOCR.UI\KazoOCR.UI.csproj" />
   </ItemGroup>
 
   <ItemGroup>

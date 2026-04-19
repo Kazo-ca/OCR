@@ -46,10 +46,18 @@ public sealed class OcrWorkerBackgroundService : BackgroundService
         {
             _logger.LogWarning("Watch path does not exist: {WatchPath}. Worker will wait for directory to be created.", watchPath);
 
-            // Wait for directory to exist
-            while (!Directory.Exists(watchPath) && !stoppingToken.IsCancellationRequested)
+            try
             {
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+                // Wait for directory to exist
+                while (!Directory.Exists(watchPath) && !stoppingToken.IsCancellationRequested)
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("OcrWorkerBackgroundService stopped gracefully");
+                return;
             }
 
             if (stoppingToken.IsCancellationRequested)

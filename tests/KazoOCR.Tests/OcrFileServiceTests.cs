@@ -154,7 +154,11 @@ public class OcrFileServiceTests
         var result = _service.ComputeOutputPath(inputPath, suffix);
 
         // Assert
-        result.Should().Be("/home/user/document_OCR.pdf");
+        var expectedDirectory = Path.GetDirectoryName(inputPath) ?? string.Empty;
+        var expected = string.IsNullOrEmpty(expectedDirectory)
+            ? "document_OCR.pdf"
+            : Path.Combine(expectedDirectory, "document_OCR.pdf");
+        result.Should().Be(expected);
     }
 
     [Fact]

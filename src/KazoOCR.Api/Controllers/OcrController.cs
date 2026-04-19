@@ -37,11 +37,12 @@ public sealed class OcrController : ControllerBase
     /// Submit a PDF for OCR processing.
     /// </summary>
     /// <param name="file">The PDF file to process.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The created job information.</returns>
     [HttpPost("process")]
     [ProducesResponseType(typeof(OcrJobResult), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<IActionResult> ProcessAsync(IFormFile file)
+    public async Task<IActionResult> ProcessAsync(IFormFile file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length == 0)
         {
@@ -72,16 +73,40 @@ public sealed class OcrController : ControllerBase
         var tempFileName = $"{Guid.NewGuid():N}_{safeFileName}";
         var tempPath = Path.Join(uploadDir, tempFileName);
 
-        await using (var stream = new FileStream(tempPath, FileMode.Create))
+        var jobCreated = false;
+
+        try
         {
-            await file.CopyToAsync(stream).ConfigureAwait(false);
+            await using (var stream = new FileStream(tempPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream, cancellationToken).ConfigureAwait(false);
+            }
+
+            // Create job
+            var job = _jobService.CreateJob(safeFileName, tempPath);
+            jobCreated = true;
+            _logger.LogInformation("Created OCR job {JobId}", job.Id);
+
+            return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
         }
+        catch
+        {
+            if (!jobCreated && System.IO.File.Exists(tempPath))
+            {
+                try
+                {
+                    System.IO.File.Delete(tempPath);
+                }
+                catch (Exception cleanupEx)
+                {
+                    _logger.LogWarning(
+                        cleanupEx,
+                        "Failed to delete temporary uploaded file after OCR job submission failure");
+                }
+            }
 
-        // Create job
-        var job = _jobService.CreateJob(safeFileName, tempPath);
-        _logger.LogInformation("Created OCR job {JobId}", job.Id);
-
-        return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
+            throw;
+        }
     }
 
     /// <summary>
@@ -129,6 +154,7 @@ public sealed class OcrController : ControllerBase
     [HttpDelete("jobs/{id}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
     public IActionResult DeleteJob(string id)
     {
         // Validate job ID format (hex string of 32 chars)
@@ -137,14 +163,25 @@ public sealed class OcrController : ControllerBase
             return NotFound(new { error = "Job not found" });
         }
 
+        // Check if job exists and is not currently processing
+        var job = _jobService.GetJob(id);
+        if (job is null)
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
+        if (job.Status == Models.JobStatus.Processing)
+        {
+            return Conflict(new { error = "Cannot delete a job that is currently processing" });
+        }
+
         var removed = _jobService.RemoveJob(id);
         if (!removed)
         {
             return NotFound(new { error = "Job not found" });
         }
 
-        var safeJobId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
-        _logger.LogInformation("Removed OCR job {JobId}", safeJobId);
+        _logger.LogInformation("Removed OCR job {JobId}", id);
         return NoContent();
     }
 

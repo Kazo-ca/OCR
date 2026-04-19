@@ -105,10 +105,8 @@ public sealed class OcrJobService : IOcrJobService
         return pendingJob?.ToResult();
     }
 
-    /// <summary>
-    /// Gets the input path for a job. Internal for use by the worker.
-    /// </summary>
-    internal string? GetJobInputPath(string id)
+    /// <inheritdoc />
+    public string? GetJobInputPath(string id)
     {
         return _jobs.TryGetValue(id, out var job) ? job.InputPath : null;
     }

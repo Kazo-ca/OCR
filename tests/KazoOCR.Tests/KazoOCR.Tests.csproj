@@ -19,6 +19,7 @@
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
     <PackageReference Include="FluentAssertions" Version="8.2.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.9.3" />
@@ -30,6 +31,7 @@
     <ProjectReference Include="..\..\src\KazoOCR.CLI\KazoOCR.CLI.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Docker\KazoOCR.Docker.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.UI\KazoOCR.UI.csproj" />
+    <ProjectReference Include="..\..\src\KazoOCR.Api\KazoOCR.Api.csproj" />
   </ItemGroup>
 
   <ItemGroup>

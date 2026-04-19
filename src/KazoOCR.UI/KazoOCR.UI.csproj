@@ -28,6 +28,7 @@
 
   <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="11.1.0" />
   </ItemGroup>
 
 </Project>

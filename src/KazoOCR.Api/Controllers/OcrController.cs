@@ -143,7 +143,7 @@ public partial class OcrController(
                         logger.LogDebug("Cleaned up temporary file for job {JobId}", job.Id);
                     }
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
                     logger.LogWarning(ex, "Failed to clean up temporary file for job {JobId}", job.Id);
                 }

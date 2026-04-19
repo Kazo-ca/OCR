@@ -60,7 +60,23 @@ public class PlaywrightUiTests : IAsyncLifetime
                 Headless = true
             });
         }
-        catch (Exception ex)
+        catch (PlaywrightException ex)
+        {
+            _playwright?.Dispose();
+            _playwright = null;
+            _browser = null;
+
+            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
+        }
+        catch (TimeoutException ex)
+        {
+            _playwright?.Dispose();
+            _playwright = null;
+            _browser = null;
+
+            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
+        }
+        catch (OperationCanceledException ex)
         {
             _playwright?.Dispose();
             _playwright = null;

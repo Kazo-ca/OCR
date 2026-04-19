@@ -1,12 +1,21 @@
 @page "/login"
 @layout AuthLayout
 @inject AuthStateService AuthState
+@inject IKazoApiClient ApiClient
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
 <PageTitle>Login - KazoOCR</PageTitle>
 
 <h5 class="text-center mb-4">Sign In</h5>
+
+@if (_showSetupSuccess)
+{
+    <div class="alert alert-success">
+        <i class="bi bi-check-circle me-2"></i>
+        Password configured successfully! Please sign in to continue.
+    </div>
+}
 
 @if (_errorMessage != null)
 {
@@ -46,11 +55,19 @@
     private LoginModel _loginModel = new();
     private bool _loading;
     private string? _errorMessage;
+    private bool _showSetupSuccess;
 
     protected override async Task OnInitializedAsync()
     {
-        // Check if already authenticated
-        var status = await AuthState.RefreshStatusAsync();
+        // Check for setup success query parameter
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        if (System.Web.HttpUtility.ParseQueryString(uri.Query).Get("setup") == "success")
+        {
+            _showSetupSuccess = true;
+        }
+
+        // Check auth status - always check server-side, don't cache
+        var status = await ApiClient.GetAuthStatusAsync();
 
         if (!status.Configured)
         {
@@ -70,6 +87,7 @@
     {
         _loading = true;
         _errorMessage = null;
+        _showSetupSuccess = false; // Clear success message on login attempt
 
         try
         {

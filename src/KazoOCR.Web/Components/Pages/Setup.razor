@@ -1,6 +1,6 @@
 @page "/setup"
 @layout AuthLayout
-@inject AuthStateService AuthState
+@inject IKazoApiClient ApiClient
 @inject NavigationManager Navigation
 @rendermode InteractiveServer
 
@@ -36,26 +36,30 @@
         <ValidationMessage For="@(() => _setupModel.ConfirmPassword)" />
     </div>
 
-    @if (!string.IsNullOrEmpty(_setupModel.Password) && !string.IsNullOrEmpty(_setupModel.ConfirmPassword))
+    @* Password validation feedback *@
+    @if (!string.IsNullOrEmpty(_setupModel.Password))
     {
-        @if (_setupModel.Password != _setupModel.ConfirmPassword)
-        {
-            <div class="alert alert-warning small">
-                Passwords do not match.
-            </div>
-        }
-        else if (_setupModel.Password.Length < 6)
-        {
-            <div class="alert alert-warning small">
-                Password should be at least 6 characters.
-            </div>
-        }
-        else
-        {
-            <div class="alert alert-success small">
-                <i class="bi bi-check-circle"></i> Passwords match.
-            </div>
-        }
+        <div class="mb-3">
+            <small class="text-muted">Password requirements:</small>
+            <ul class="list-unstyled mb-0 small">
+                <li class="@(HasMinLength ? "text-success" : "text-danger")">
+                    <i class="bi @(HasMinLength ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least 8 characters
+                </li>
+                <li class="@(HasUppercase ? "text-success" : "text-danger")">
+                    <i class="bi @(HasUppercase ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least one uppercase letter
+                </li>
+                <li class="@(HasDigit ? "text-success" : "text-danger")">
+                    <i class="bi @(HasDigit ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least one digit
+                </li>
+                <li class="@(PasswordsMatch ? "text-success" : "text-danger")">
+                    <i class="bi @(PasswordsMatch ? "bi-check-circle" : "bi-x-circle")"></i>
+                    Passwords match
+                </li>
+            </ul>
+        </div>
     }
 
     <div class="d-grid">
@@ -80,27 +84,26 @@
     private bool _loading;
     private string? _errorMessage;
 
-    private bool IsFormValid =>
-        !string.IsNullOrEmpty(_setupModel.Password) &&
-        _setupModel.Password.Length >= 6 &&
+    // Password validation helpers
+    private bool HasMinLength => _setupModel.Password.Length >= 8;
+    private bool HasUppercase => _setupModel.Password.Any(char.IsUpper);
+    private bool HasDigit => _setupModel.Password.Any(char.IsDigit);
+    private bool PasswordsMatch => 
+        !string.IsNullOrEmpty(_setupModel.ConfirmPassword) &&
         _setupModel.Password == _setupModel.ConfirmPassword;
+
+    private bool IsFormValid =>
+        HasMinLength && HasUppercase && HasDigit && PasswordsMatch;
 
     protected override async Task OnInitializedAsync()
     {
-        // Check if already configured
-        var status = await AuthState.RefreshStatusAsync();
+        // Check if already configured - always check server-side
+        var status = await ApiClient.GetAuthStatusAsync();
 
         if (status.Configured)
         {
-            // Already configured: redirect to login or dashboard
-            if (status.Authenticated)
-            {
-                Navigation.NavigateTo("/", forceLoad: true);
-            }
-            else
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-            }
+            // Already configured: redirect to login
+            Navigation.NavigateTo("/login", forceLoad: true);
         }
     }
 
@@ -108,7 +111,7 @@
     {
         if (!IsFormValid)
         {
-            _errorMessage = "Please fill in all fields correctly.";
+            _errorMessage = "Please ensure the password meets all requirements.";
             return;
         }
 
@@ -117,17 +120,29 @@
 
         try
         {
-            var success = await AuthState.SetupPasswordAsync(
-                _setupModel.Password,
-                _setupModel.ConfirmPassword);
+            // Double-check server status before setup
+            var status = await ApiClient.GetAuthStatusAsync();
+            if (status.Configured)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            var success = await ApiClient.SetupPasswordAsync(
+                new SetupRequest 
+                { 
+                    Password = _setupModel.Password, 
+                    ConfirmPassword = _setupModel.ConfirmPassword 
+                });
 
             if (success)
             {
-                Navigation.NavigateTo("/", forceLoad: true);
+                // Redirect to login with success message
+                Navigation.NavigateTo("/login?setup=success", forceLoad: true);
             }
             else
             {
-                _errorMessage = "Setup failed. Please try again.";
+                _errorMessage = "Setup failed. The password may already be configured.";
             }
         }
         catch (Exception ex)

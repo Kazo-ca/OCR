@@ -16,7 +16,7 @@ public class ApiKeyMiddleware
         ArgumentNullException.ThrowIfNull(configuration);
         
         _next = next;
-        _apiKey = configuration["KAZO_API_KEY"];
+        _apiKey = configuration["API_KEY"];
         _logger = logger;
 
         if (string.IsNullOrEmpty(_apiKey))

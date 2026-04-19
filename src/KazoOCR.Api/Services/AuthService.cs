@@ -27,11 +27,11 @@ public class AuthService : IAuthService
         _logger = logger;
 
         // Get data directory from configuration or default to "data"
-        var dataPath = configuration["KAZO_DATA_PATH"] ?? "data";
+        var dataPath = configuration["DATA_PATH"] ?? "data";
         _authFilePath = Path.Join(dataPath, "auth.json");
 
         // Session token expiration (default 24 hours)
-        var expirationHours = configuration.GetValue<int?>("KAZO_SESSION_EXPIRATION_HOURS") ?? 24;
+        var expirationHours = configuration.GetValue<int?>("SESSION_EXPIRATION_HOURS") ?? 24;
         _tokenExpiration = TimeSpan.FromHours(expirationHours);
 
         // Initialize password from env var or file
@@ -43,8 +43,8 @@ public class AuthService : IAuthService
         if (_isInitialized)
             return;
 
-        // Check for KAZO_DEFAULT_PASSWORD env var
-        var defaultPassword = configuration["KAZO_DEFAULT_PASSWORD"];
+        // Check for DEFAULT_PASSWORD env var (KAZO_DEFAULT_PASSWORD with prefix stripped)
+        var defaultPassword = configuration["DEFAULT_PASSWORD"];
         if (!string.IsNullOrEmpty(defaultPassword))
         {
             // If env var is set and no existing hash, hash and store it

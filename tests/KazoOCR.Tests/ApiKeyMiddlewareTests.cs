@@ -25,7 +25,7 @@ public class ApiKeyMiddlewareTests
         
         if (apiKey != null)
         {
-            configDict["KAZO_API_KEY"] = apiKey;
+            configDict["API_KEY"] = apiKey;
         }
 
         return new ConfigurationBuilder()

@@ -33,17 +33,17 @@ public class AuthServiceTests : IDisposable
     {
         var configDict = new Dictionary<string, string?>
         {
-            ["KAZO_DATA_PATH"] = _testDataPath
+            ["DATA_PATH"] = _testDataPath
         };
 
         if (defaultPassword != null)
         {
-            configDict["KAZO_DEFAULT_PASSWORD"] = defaultPassword;
+            configDict["DEFAULT_PASSWORD"] = defaultPassword;
         }
 
         if (sessionExpirationHours.HasValue)
         {
-            configDict["KAZO_SESSION_EXPIRATION_HOURS"] = sessionExpirationHours.Value.ToString();
+            configDict["SESSION_EXPIRATION_HOURS"] = sessionExpirationHours.Value.ToString();
         }
 
         return new ConfigurationBuilder()

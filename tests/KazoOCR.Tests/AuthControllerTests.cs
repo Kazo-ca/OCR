@@ -42,7 +42,7 @@ public class AuthControllerTests : IClassFixture<WebApplicationFactory<KazoOCR.A
                     var config = new ConfigurationBuilder()
                         .AddInMemoryCollection(new Dictionary<string, string?>
                         {
-                            ["KAZO_DATA_PATH"] = _testDataPath
+                            ["DATA_PATH"] = _testDataPath
                         })
                         .Build();
                     var logger = sp.GetRequiredService<ILogger<AuthService>>();

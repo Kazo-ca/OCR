@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using KazoOCR.Api.Models;
+using Microsoft.AspNetCore.DataProtection;
 
 namespace KazoOCR.Api.Services;
 
@@ -14,6 +15,7 @@ public class AuthService : IAuthService
     private readonly string _authFilePath;
     private readonly TimeSpan _tokenExpiration;
     private readonly ILogger<AuthService> _logger;
+    private readonly IDataProtector _passwordHashProtector;
     private readonly ConcurrentDictionary<string, DateTimeOffset> _activeSessions = new();
     private readonly object _fileLock = new();
 
@@ -29,6 +31,9 @@ public class AuthService : IAuthService
         // Get data directory from configuration or default to "data"
         var dataPath = configuration["DATA_PATH"] ?? "data";
         _authFilePath = Path.Join(dataPath, "auth.json");
+        _passwordHashProtector = DataProtectionProvider
+            .Create(new DirectoryInfo(dataPath))
+            .CreateProtector("KazoOCR.Api.Services.AuthService.PasswordHash");
 
         // Session token expiration (default 24 hours)
         var expirationHours = configuration.GetValue<int?>("SESSION_EXPIRATION_HOURS") ?? 24;
@@ -169,7 +174,7 @@ public class AuthService : IAuthService
                 
                 if (authData != null && !string.IsNullOrEmpty(authData.PasswordHash))
                 {
-                    _passwordHash = authData.PasswordHash;
+                    _passwordHash = _passwordHashProtector.Unprotect(authData.PasswordHash);
                     _logger.LogInformation("Loaded password hash from {AuthFilePath}", _authFilePath);
                     return true;
                 }
@@ -195,7 +200,8 @@ public class AuthService : IAuthService
                     Directory.CreateDirectory(directory);
                 }
 
-                var authData = new AuthData(hash);
+                var protectedHash = _passwordHashProtector.Protect(hash);
+                var authData = new AuthData(protectedHash);
                 var json = JsonSerializer.Serialize(authData, new JsonSerializerOptions { WriteIndented = true });
                 File.WriteAllText(_authFilePath, json);
                 

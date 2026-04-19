@@ -37,3 +37,11 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 app.Run();
+
+namespace KazoOCR.Web
+{
+    /// <summary>
+    /// Partial class for WebApplicationFactory integration testing.
+    /// </summary>
+    public partial class Program { }
+}

@@ -56,7 +56,10 @@ app.MapHealthChecks("/health");
 
 app.Run();
 
-/// <summary>
-/// Partial class for WebApplicationFactory integration testing.
-/// </summary>
-public partial class Program { }
+namespace KazoOCR.Api
+{
+    /// <summary>
+    /// Partial class for WebApplicationFactory integration testing.
+    /// </summary>
+    public partial class Program { }
+}

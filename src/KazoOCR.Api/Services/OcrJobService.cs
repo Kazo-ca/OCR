@@ -9,7 +9,6 @@ namespace KazoOCR.Api.Services;
 public sealed class OcrJobService : IOcrJobService
 {
     private readonly ConcurrentDictionary<string, OcrJob> _jobs = new();
-    private readonly object _lock = new();
 
     /// <inheritdoc />
     public OcrJobResult CreateJob(string inputFileName, string inputPath)
@@ -45,7 +44,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        lock (_lock)
+        // Use lock on the job object itself for atomic state transition
+        lock (job)
         {
             if (job.Status != JobStatus.Pending)
                 return false;
@@ -61,7 +61,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        lock (_lock)
+        // Use lock on the job object itself for atomic state transition
+        lock (job)
         {
             job.Status = JobStatus.Completed;
             job.OutputPath = outputPath;
@@ -76,7 +77,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        lock (_lock)
+        // Use lock on the job object itself for atomic state transition
+        lock (job)
         {
             job.Status = JobStatus.Failed;
             job.ErrorMessage = errorMessage;
@@ -94,15 +96,13 @@ public sealed class OcrJobService : IOcrJobService
     /// <inheritdoc />
     public OcrJobResult? GetNextPendingJob()
     {
-        lock (_lock)
-        {
-            var pendingJob = _jobs.Values
-                .Where(j => j.Status == JobStatus.Pending)
-                .OrderBy(j => j.CreatedAt)
-                .FirstOrDefault();
+        // Find the oldest pending job using thread-safe enumeration
+        var pendingJob = _jobs.Values
+            .Where(j => j.Status == JobStatus.Pending)
+            .OrderBy(j => j.CreatedAt)
+            .FirstOrDefault();
 
-            return pendingJob?.ToResult();
-        }
+        return pendingJob?.ToResult();
     }
 
     /// <summary>

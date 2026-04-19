@@ -1,5 +1,6 @@
 using KazoOCR.Api.Models;
 using KazoOCR.Core;
+using static KazoOCR.Api.ApiConfiguration;
 
 namespace KazoOCR.Api.Services;
 
@@ -13,11 +14,6 @@ public sealed class OcrJobProcessorService : BackgroundService
     private readonly IOcrProcessRunner _processRunner;
     private readonly ILogger<OcrJobProcessorService> _logger;
     private readonly IConfiguration _configuration;
-
-    private const string EnvSuffix = "KAZO_SUFFIX";
-    private const string EnvLanguages = "KAZO_LANGUAGES";
-    private const string DefaultSuffix = "_OCR";
-    private const string DefaultLanguages = "fra+eng";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OcrJobProcessorService"/> class.
@@ -83,7 +79,7 @@ public sealed class OcrJobProcessorService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("Processing job {JobId}: {FileName}", job.Id, job.InputFileName);
+        _logger.LogInformation("Processing job {JobId}", job.Id);
 
         try
         {
@@ -96,7 +92,7 @@ public sealed class OcrJobProcessorService : BackgroundService
             if (result.IsSuccess)
             {
                 _jobService.MarkCompleted(job.Id, outputPath);
-                _logger.LogInformation("Job {JobId} completed successfully: {OutputPath}", job.Id, outputPath);
+                _logger.LogInformation("Job {JobId} completed successfully", job.Id);
             }
             else
             {
@@ -104,7 +100,7 @@ public sealed class OcrJobProcessorService : BackgroundService
                     ? $"OCR process failed with exit code {result.ExitCode}"
                     : result.StandardError;
                 _jobService.MarkFailed(job.Id, errorMessage);
-                _logger.LogError("Job {JobId} failed: {Error}", job.Id, errorMessage);
+                _logger.LogError("Job {JobId} failed with exit code {ExitCode}", job.Id, result.ExitCode);
             }
         }
         catch (Exception ex)
@@ -116,7 +112,17 @@ public sealed class OcrJobProcessorService : BackgroundService
 
     private OcrSettings BuildOcrSettings() => new()
     {
-        Suffix = _configuration[EnvSuffix] ?? Environment.GetEnvironmentVariable(EnvSuffix) ?? DefaultSuffix,
-        Languages = _configuration[EnvLanguages] ?? Environment.GetEnvironmentVariable(EnvLanguages) ?? DefaultLanguages
+        Suffix = GetConfigValue(EnvSuffix, DefaultSuffix),
+        Languages = GetConfigValue(EnvLanguages, DefaultLanguages),
+        Deskew = ParseBool(GetConfigValue(EnvDeskew, null), DefaultDeskew),
+        Clean = ParseBool(GetConfigValue(EnvClean, null), DefaultClean),
+        Rotate = ParseBool(GetConfigValue(EnvRotate, null), DefaultRotate),
+        Optimize = ParseInt(GetConfigValue(EnvOptimize, null), DefaultOptimize)
     };
+
+    private string GetConfigValue(string key, string? defaultValue) =>
+        _configuration[key]
+        ?? Environment.GetEnvironmentVariable(key)
+        ?? defaultValue
+        ?? string.Empty;
 }

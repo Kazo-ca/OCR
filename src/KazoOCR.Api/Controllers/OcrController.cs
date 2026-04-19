@@ -2,6 +2,7 @@ using KazoOCR.Api.Models;
 using KazoOCR.Api.Services;
 using KazoOCR.Core;
 using Microsoft.AspNetCore.Mvc;
+using static KazoOCR.Api.ApiConfiguration;
 
 namespace KazoOCR.Api.Controllers;
 
@@ -16,9 +17,6 @@ public sealed class OcrController : ControllerBase
     private readonly IOcrFileService _fileService;
     private readonly ILogger<OcrController> _logger;
     private readonly IConfiguration _configuration;
-
-    private const string EnvSuffix = "KAZO_SUFFIX";
-    private const string DefaultSuffix = "_OCR";
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OcrController"/> class.
@@ -69,8 +67,9 @@ public sealed class OcrController : ControllerBase
         var uploadDir = Path.Join(Path.GetTempPath(), "kazoocr-uploads");
         Directory.CreateDirectory(uploadDir);
 
-        // Save to temp file
-        var tempFileName = $"{Guid.NewGuid():N}_{Path.GetFileName(file.FileName)}";
+        // Save to temp file - use Path.GetFileName to sanitize against path traversal
+        var safeFileName = Path.GetFileName(file.FileName);
+        var tempFileName = $"{Guid.NewGuid():N}_{safeFileName}";
         var tempPath = Path.Join(uploadDir, tempFileName);
 
         await using (var stream = new FileStream(tempPath, FileMode.Create))
@@ -79,8 +78,8 @@ public sealed class OcrController : ControllerBase
         }
 
         // Create job
-        var job = _jobService.CreateJob(file.FileName, tempPath);
-        _logger.LogInformation("Created OCR job {JobId} for file {FileName}", job.Id, file.FileName);
+        var job = _jobService.CreateJob(safeFileName, tempPath);
+        _logger.LogInformation("Created OCR job {JobId}", job.Id);
 
         return CreatedAtAction(nameof(GetJob), new { id = job.Id }, job);
     }
@@ -107,6 +106,12 @@ public sealed class OcrController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult GetJob(string id)
     {
+        // Validate job ID format (hex string of 32 chars)
+        if (!IsValidJobId(id))
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
         var job = _jobService.GetJob(id);
         if (job is null)
         {
@@ -126,6 +131,12 @@ public sealed class OcrController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public IActionResult DeleteJob(string id)
     {
+        // Validate job ID format (hex string of 32 chars)
+        if (!IsValidJobId(id))
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
         var removed = _jobService.RemoveJob(id);
         if (!removed)
         {
@@ -135,4 +146,12 @@ public sealed class OcrController : ControllerBase
         _logger.LogInformation("Removed OCR job {JobId}", id);
         return NoContent();
     }
+
+    /// <summary>
+    /// Validates that a job ID is in the expected format (32-char hex string).
+    /// </summary>
+    private static bool IsValidJobId(string id) =>
+        !string.IsNullOrEmpty(id) &&
+        id.Length == 32 &&
+        id.All(c => char.IsAsciiHexDigit(c));
 }

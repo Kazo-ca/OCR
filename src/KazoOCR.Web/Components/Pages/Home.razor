@@ -113,7 +113,7 @@
 
         try
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false))
+            while (await timer.WaitForNextTickAsync(cancellationToken))
             {
                 await RefreshJobsAsync();
                 await InvokeAsync(StateHasChanged);

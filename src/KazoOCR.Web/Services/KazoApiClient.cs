@@ -147,6 +147,10 @@ public sealed class KazoApiClient : IKazoApiClient
     {
         ArgumentNullException.ThrowIfNull(options);
 
+        // NOTE: The API currently only accepts the file parameter.
+        // OCR options (languages, deskew, clean, rotate, optimize) are not yet
+        // supported by the API and will be ignored until API support is added.
+
         try
         {
             using var content = new MultipartFormDataContent();
@@ -215,30 +219,27 @@ public sealed class KazoApiClient : IKazoApiClient
     }
 
     /// <inheritdoc />
-    public async Task<OcrSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
+    public Task<OcrSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
         // NOTE: Settings endpoint not yet implemented in API
         // Return default settings for now
         _logger.LogDebug("Settings endpoint not implemented - returning defaults");
-        await Task.CompletedTask;
-        return new OcrSettings();
+        return Task.FromResult(new OcrSettings());
     }
 
     /// <inheritdoc />
-    public async Task<bool> UpdateSettingsAsync(OcrSettings settings, CancellationToken cancellationToken = default)
+    public Task<bool> UpdateSettingsAsync(OcrSettings settings, CancellationToken cancellationToken = default)
     {
         // NOTE: Settings endpoint not yet implemented in API
         _logger.LogWarning("Settings endpoint not implemented - settings not saved");
-        await Task.CompletedTask;
-        return false;
+        return Task.FromResult(false);
     }
 
     /// <inheritdoc />
-    public async Task<Stream?> DownloadOutputAsync(string jobId, CancellationToken cancellationToken = default)
+    public Task<Stream?> DownloadOutputAsync(string jobId, CancellationToken cancellationToken = default)
     {
         // NOTE: Download endpoint not yet implemented in API
         _logger.LogWarning("Download endpoint not implemented for job {JobId}", jobId);
-        await Task.CompletedTask;
-        return null;
+        return Task.FromResult<Stream?>(null);
     }
 }

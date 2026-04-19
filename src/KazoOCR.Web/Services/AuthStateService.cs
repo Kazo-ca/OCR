@@ -94,7 +94,7 @@ public sealed class AuthStateService
         if (response.Success)
         {
             _token = response.Token;
-            _isConfigured = true;
+            // Note: _isConfigured is not set here - it's managed by RefreshStatusAsync and SetupPasswordAsync
             OnAuthStateChanged?.Invoke();
             return true;
         }

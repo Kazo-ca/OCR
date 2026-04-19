@@ -125,7 +125,7 @@ public partial class OcrController(
                     logger.LogWarning("Job {JobId} failed with exit code {ExitCode}", job.Id, result.ExitCode);
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex) when (IsNonFatal(ex))
             {
                 // Don't expose internal exception details to users - use a generic message
                 // The full exception is logged below for debugging
@@ -149,6 +149,15 @@ public partial class OcrController(
                 }
             }
         }, CancellationToken.None);
+
+    private static bool IsNonFatal(Exception ex) =>
+        ex is not OutOfMemoryException
+        and not StackOverflowException
+        and not AccessViolationException
+        and not AppDomainUnloadedException
+        and not BadImageFormatException
+        and not CannotUnloadAppDomainException
+        and not InvalidProgramException;
 
         return AcceptedAtAction(
             nameof(GetJob),

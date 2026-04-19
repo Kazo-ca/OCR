@@ -86,6 +86,11 @@ public partial class OcrController(
         var tempDir = Path.Join(Path.GetTempPath(), "KazoOCR");
         Directory.CreateDirectory(tempDir);
         var tempFileName = Path.GetFileName($"{job.Id}{extension}");
+        if (Path.IsPathRooted(tempFileName))
+        {
+            throw new InvalidOperationException("Temporary file name must be a relative file name.");
+        }
+
         var tempPath = Path.Combine(tempDir, tempFileName);
         await using (var stream = new FileStream(tempPath, FileMode.Create))
         {

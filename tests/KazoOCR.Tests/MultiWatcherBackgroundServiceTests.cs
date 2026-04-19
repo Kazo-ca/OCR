@@ -140,7 +140,7 @@ public class MultiWatcherBackgroundServiceTests
                 {
                     // Wait for cancellation
                     try { await Task.Delay(Timeout.Infinite, ct); }
-                    catch (OperationCanceledException) { }
+                    catch (OperationCanceledException) { return; }
                 });
 
             using var service = new MultiWatcherBackgroundService(configuration, _watcherServiceMock.Object, _loggerMock.Object);

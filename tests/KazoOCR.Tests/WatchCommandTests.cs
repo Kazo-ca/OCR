@@ -115,6 +115,34 @@ public class WatchCommandTests
     }
 
     [Fact]
+    public async Task Execute_WithDefaultOptions_UsesSameDeskewAndRotateDefaultsAsOcrCommand()
+    {
+        var tempDir = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+        OcrSettings? capturedSettings = null;
+
+        try
+        {
+            _watcherServiceMock
+                .Setup(x => x.WatchAsync(tempDir, It.IsAny<OcrSettings>(), It.IsAny<CancellationToken>()))
+                .Callback<string, OcrSettings, CancellationToken>((_, settings, _) => capturedSettings = settings)
+                .ThrowsAsync(new OperationCanceledException());
+
+            var result = await _command.Execute(input: tempDir);
+
+            result.Should().Be((int)ExitCodes.Success);
+            capturedSettings.Should().NotBeNull();
+            capturedSettings!.Deskew.Should().BeTrue();
+            capturedSettings.Rotate.Should().BeTrue();
+            capturedSettings.Clean.Should().BeFalse();
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
     public async Task Execute_WhenCanceled_ReturnsSuccess()
     {
         var tempDir = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

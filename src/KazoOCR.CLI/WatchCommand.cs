@@ -42,9 +42,9 @@ public sealed class WatchCommand
         [Option('i', Description = "Source folder to watch")] string input,
         [Option('s', Description = "Suffix for output file")] string suffix = "_OCR",
         [Option('l', Description = "Tesseract language codes")] string languages = "fra+eng",
-        [Option(Description = "Enable deskew correction")] bool deskew = false,
+        [Option(Description = "Enable deskew correction")] bool deskew = true,
         [Option(Description = "Enable Unpaper cleaning")] bool clean = false,
-        [Option(Description = "Enable orientation correction")] bool rotate = false,
+        [Option(Description = "Enable orientation correction")] bool rotate = true,
         [Option(Description = "Compression level (0-3)")] int optimize = 1,
         CancellationToken cancellationToken = default)
     {

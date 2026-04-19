@@ -8,6 +8,10 @@ namespace KazoOCR.Core;
 /// </summary>
 public sealed class WatcherService : IWatcherService
 {
+    private const int QueueCapacity = 1024;
+    private const int ValidationRetryDelayMilliseconds = 200;
+    private const int ValidationRetryMaxAttempts = 3;
+
     private readonly IOcrFileService _fileService;
     private readonly IOcrProcessRunner _processRunner;
     private readonly ILogger<WatcherService> _logger;
@@ -41,10 +45,11 @@ public sealed class WatcherService : IWatcherService
             throw new DirectoryNotFoundException($"Directory not found: {inputDirectory}");
         }
 
-        var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(QueueCapacity)
         {
             SingleReader = true,
-            SingleWriter = false
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.DropWrite
         });
 
         void OnCreated(object sender, FileSystemEventArgs eventArgs) => TryQueue(eventArgs.FullPath);
@@ -62,10 +67,13 @@ public sealed class WatcherService : IWatcherService
             if (channel.Writer.TryWrite(path))
             {
                 _logger.LogInformation("Queued PDF for processing: {File}", path);
+                return;
             }
+
+            _logger.LogWarning("Queue is full, dropping file event: {File}", path);
         }
 
-        using var watcher = new FileSystemWatcher(inputDirectory, "*.pdf")
+        using var watcher = new FileSystemWatcher(inputDirectory, "*")
         {
             IncludeSubdirectories = true,
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime
@@ -115,9 +123,7 @@ public sealed class WatcherService : IWatcherService
             return false;
         }
 
-        var fileName = Path.GetFileNameWithoutExtension(path);
-        if (!string.IsNullOrWhiteSpace(suffix) &&
-            fileName.Contains(suffix, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(suffix) && _fileService.IsAlreadyProcessed(path, suffix))
         {
             _logger.LogDebug("Ignoring file with OCR suffix to avoid loop: {File}", path);
             return false;
@@ -134,10 +140,8 @@ public sealed class WatcherService : IWatcherService
             return;
         }
 
-        var validation = _fileService.ValidateInput(filePath);
-        if (!validation.IsValid)
+        if (!await ValidateInputWithRetriesAsync(filePath, cancellationToken))
         {
-            _logger.LogWarning("Skipping invalid input file: {File}. Errors: {Errors}", filePath, string.Join("; ", validation.Errors));
             return;
         }
 
@@ -164,4 +168,35 @@ public sealed class WatcherService : IWatcherService
             _logger.LogError(ex, "Unexpected error while processing {File}", filePath);
         }
     }
+
+    private async Task<bool> ValidateInputWithRetriesAsync(string filePath, CancellationToken cancellationToken)
+    {
+        ValidationResult? lastValidation = null;
+        for (var attempt = 1; attempt <= ValidationRetryMaxAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            lastValidation = _fileService.ValidateInput(filePath);
+            if (lastValidation.IsValid)
+            {
+                return true;
+            }
+
+            if (!IsTransientValidationFailure(lastValidation) || attempt == ValidationRetryMaxAttempts)
+            {
+                break;
+            }
+
+            _logger.LogDebug("Validation failed for {File}; retrying attempt {Attempt}/{MaxAttempts}", filePath, attempt + 1, ValidationRetryMaxAttempts);
+            await Task.Delay(ValidationRetryDelayMilliseconds, cancellationToken);
+        }
+
+        _logger.LogWarning("Skipping invalid input file: {File}. Errors: {Errors}", filePath, string.Join("; ", lastValidation?.Errors ?? []));
+        return false;
+    }
+
+    private static bool IsTransientValidationFailure(ValidationResult validationResult) =>
+        validationResult.Errors.Any(error =>
+            error.Contains("Cannot access file", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("Access denied", StringComparison.OrdinalIgnoreCase));
 }

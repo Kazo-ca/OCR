@@ -10,7 +10,7 @@ public sealed class AuthStateService
 {
     private readonly IKazoApiClient _apiClient;
     private readonly ILogger<AuthStateService> _logger;
-    private AuthStatus? _cachedStatus;
+    private bool _isConfigured;
     private string? _token;
 
     /// <summary>
@@ -30,14 +30,14 @@ public sealed class AuthStateService
     public event Action? OnAuthStateChanged;
 
     /// <summary>
-    /// Gets a value indicating whether the user is authenticated.
+    /// Gets a value indicating whether the user is authenticated (has valid token).
     /// </summary>
-    public bool IsAuthenticated => _cachedStatus?.Authenticated ?? false;
+    public bool IsAuthenticated => !string.IsNullOrEmpty(_token);
 
     /// <summary>
     /// Gets a value indicating whether authentication is configured.
     /// </summary>
-    public bool IsConfigured => _cachedStatus?.Configured ?? false;
+    public bool IsConfigured => _isConfigured;
 
     /// <summary>
     /// Gets the authentication token.
@@ -46,6 +46,8 @@ public sealed class AuthStateService
 
     /// <summary>
     /// Refreshes the authentication status from the API.
+    /// Note: This only updates the "configured" status, not authentication.
+    /// Authentication is based on whether we have a valid token.
     /// </summary>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The authentication status.</returns>
@@ -53,9 +55,17 @@ public sealed class AuthStateService
     {
         try
         {
-            _cachedStatus = await _apiClient.GetAuthStatusAsync(cancellationToken).ConfigureAwait(false);
+            var apiStatus = await _apiClient.GetAuthStatusAsync(cancellationToken).ConfigureAwait(false);
+            _isConfigured = apiStatus.Configured;
+
+            var status = new AuthStatus
+            {
+                Configured = _isConfigured,
+                Authenticated = IsAuthenticated
+            };
+
             OnAuthStateChanged?.Invoke();
-            return _cachedStatus;
+            return status;
         }
         catch (OperationCanceledException)
         {
@@ -64,9 +74,8 @@ public sealed class AuthStateService
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to refresh auth status");
-            _cachedStatus = new AuthStatus { Configured = false, Authenticated = false };
-            OnAuthStateChanged?.Invoke();
-            return _cachedStatus;
+            // Keep existing configured status, just update authenticated based on token
+            return new AuthStatus { Configured = _isConfigured, Authenticated = IsAuthenticated };
         }
     }
 
@@ -85,7 +94,7 @@ public sealed class AuthStateService
         if (response.Success)
         {
             _token = response.Token;
-            _cachedStatus = new AuthStatus { Configured = true, Authenticated = true };
+            _isConfigured = true;
             OnAuthStateChanged?.Invoke();
             return true;
         }
@@ -101,7 +110,7 @@ public sealed class AuthStateService
     {
         await _apiClient.LogoutAsync(cancellationToken).ConfigureAwait(false);
         _token = null;
-        _cachedStatus = new AuthStatus { Configured = true, Authenticated = false };
+        // Keep _isConfigured as true since the password is still set
         OnAuthStateChanged?.Invoke();
     }
 
@@ -128,6 +137,7 @@ public sealed class AuthStateService
 
         if (success)
         {
+            _isConfigured = true;
             // After setup, automatically log in
             return await LoginAsync(password, cancellationToken).ConfigureAwait(false);
         }

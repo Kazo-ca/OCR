@@ -8,6 +8,12 @@
     <div class="container-fluid">
         <h1 class="mb-4">OCR Settings</h1>
 
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> Settings persistence is not yet implemented in the API.
+            Changes made here are only applied to the current session.
+        </div>
+
         @if (_loading)
         {
             <div class="d-flex justify-content-center">

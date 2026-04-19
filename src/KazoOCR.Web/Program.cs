@@ -3,8 +3,10 @@ using KazoOCR.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure port from environment variable or use default
-var port = Environment.GetEnvironmentVariable("KAZO_WEB_PORT") ?? "5001";
+// Read configuration from appsettings.json with environment variable overrides
+var port = builder.Configuration["KazoOCR:WebPort"]
+    ?? Environment.GetEnvironmentVariable("KAZO_WEB_PORT")
+    ?? "5001";
 builder.WebHost.UseUrls($"http://*:{port}");
 
 // Add services to the container.
@@ -12,7 +14,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
 // Configure typed HttpClient for API communication
-var apiBaseUrl = Environment.GetEnvironmentVariable("KAZO_API_BASE_URL") ?? "http://api:5000";
+var apiBaseUrl = builder.Configuration["KazoOCR:ApiBaseUrl"]
+    ?? Environment.GetEnvironmentVariable("KAZO_API_BASE_URL")
+    ?? "http://api:5000";
 builder.Services.AddHttpClient<IKazoApiClient, KazoApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);

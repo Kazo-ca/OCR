@@ -44,10 +44,10 @@
                 Passwords do not match.
             </div>
         }
-        else if (_setupModel.Password.Length < 6)
+        else if (_setupModel.Password.Length < 8)
         {
             <div class="alert alert-warning small">
-                Password should be at least 6 characters.
+                Password should be at least 8 characters.
             </div>
         }
         else
@@ -82,7 +82,7 @@
 
     private bool IsFormValid =>
         !string.IsNullOrEmpty(_setupModel.Password) &&
-        _setupModel.Password.Length >= 6 &&
+        _setupModel.Password.Length >= 8 &&
         _setupModel.Password == _setupModel.ConfirmPassword;
 
     protected override async Task OnInitializedAsync()

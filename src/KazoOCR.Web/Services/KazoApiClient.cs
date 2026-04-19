@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using KazoOCR.Web.Models;
 using Microsoft.Extensions.Logging;
 
@@ -32,12 +33,12 @@ public sealed class KazoApiClient : IKazoApiClient
                 "api/auth/status",
                 cancellationToken).ConfigureAwait(false);
 
-            return response ?? new AuthStatus { Configured = false, Authenticated = false };
+            return response ?? new AuthStatus { Configured = false };
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Failed to get auth status");
-            return new AuthStatus { Configured = false, Authenticated = false };
+            return new AuthStatus { Configured = false };
         }
     }
 
@@ -46,7 +47,7 @@ public sealed class KazoApiClient : IKazoApiClient
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(
+            using var response = await _httpClient.PostAsJsonAsync(
                 "api/auth/login",
                 request,
                 cancellationToken).ConfigureAwait(false);
@@ -54,15 +55,18 @@ public sealed class KazoApiClient : IKazoApiClient
             if (response.IsSuccessStatusCode)
             {
                 var result = await response.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken).ConfigureAwait(false);
-                return result ?? new LoginResponse { Success = false, Error = "Invalid response" };
+                return result ?? new LoginResponse();
             }
 
-            return new LoginResponse { Success = false, Error = $"Login failed: {response.ReasonPhrase}" };
+            // Try to extract error from response body
+            var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            _logger.LogWarning("Login failed: {StatusCode} - {Error}", response.StatusCode, errorContent);
+            return new LoginResponse();
         }
         catch (HttpRequestException ex)
         {
             _logger.LogWarning(ex, "Login request failed");
-            return new LoginResponse { Success = false, Error = "Connection error" };
+            return new LoginResponse();
         }
     }
 
@@ -71,7 +75,7 @@ public sealed class KazoApiClient : IKazoApiClient
     {
         try
         {
-            await _httpClient.PostAsync("api/auth/logout", null, cancellationToken).ConfigureAwait(false);
+            using var response = await _httpClient.PostAsync("api/auth/logout", null, cancellationToken).ConfigureAwait(false);
         }
         catch (HttpRequestException ex)
         {
@@ -82,11 +86,13 @@ public sealed class KazoApiClient : IKazoApiClient
     /// <inheritdoc />
     public async Task<bool> SetupPasswordAsync(SetupRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
+
         try
         {
-            var response = await _httpClient.PostAsJsonAsync(
+            using var response = await _httpClient.PostAsJsonAsync(
                 "api/auth/setup",
-                request,
+                new { password = request.Password },
                 cancellationToken).ConfigureAwait(false);
 
             return response.IsSuccessStatusCode;
@@ -144,29 +150,41 @@ public sealed class KazoApiClient : IKazoApiClient
         try
         {
             using var content = new MultipartFormDataContent();
-            using var fileStream = new StreamContent(fileContent);
-            using var languagesContent = new StringContent(options.Languages);
-            using var deskewContent = new StringContent(options.Deskew.ToString().ToLowerInvariant());
-            using var cleanContent = new StringContent(options.Clean.ToString().ToLowerInvariant());
-            using var rotateContent = new StringContent(options.Rotate.ToString().ToLowerInvariant());
-            using var optimizeContent = new StringContent(options.Optimize.ToString());
+            using var fileStreamContent = new StreamContent(fileContent);
 
-            content.Add(fileStream, "file", fileName);
-            content.Add(languagesContent, "languages");
-            content.Add(deskewContent, "deskew");
-            content.Add(cleanContent, "clean");
-            content.Add(rotateContent, "rotate");
-            content.Add(optimizeContent, "optimize");
+            content.Add(fileStreamContent, "file", fileName);
 
-            var response = await _httpClient.PostAsync(
+            using var response = await _httpClient.PostAsync(
                 "api/ocr/process",
                 content,
                 cancellationToken).ConfigureAwait(false);
 
             if (response.IsSuccessStatusCode)
             {
+                // API returns OcrJobResult on success (201 Created)
                 var result = await response.Content.ReadFromJsonAsync<ProcessResponse>(cancellationToken).ConfigureAwait(false);
-                return result ?? new ProcessResponse { Success = false, Error = "Invalid response" };
+                if (result != null)
+                {
+                    result.Success = true;
+                    return result;
+                }
+
+                return new ProcessResponse { Success = false, Error = "Invalid response from server" };
+            }
+
+            // Try to extract error from response body
+            try
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var errorDoc = JsonDocument.Parse(errorContent);
+                if (errorDoc.RootElement.TryGetProperty("error", out var errorProp))
+                {
+                    return new ProcessResponse { Success = false, Error = errorProp.GetString() };
+                }
+            }
+            catch (JsonException)
+            {
+                // Ignore JSON parse errors
             }
 
             return new ProcessResponse { Success = false, Error = $"Processing failed: {response.ReasonPhrase}" };
@@ -183,7 +201,7 @@ public sealed class KazoApiClient : IKazoApiClient
     {
         try
         {
-            var response = await _httpClient.DeleteAsync(
+            using var response = await _httpClient.DeleteAsync(
                 $"api/ocr/jobs/{Uri.EscapeDataString(jobId)}",
                 cancellationToken).ConfigureAwait(false);
 
@@ -199,61 +217,28 @@ public sealed class KazoApiClient : IKazoApiClient
     /// <inheritdoc />
     public async Task<OcrSettings> GetSettingsAsync(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var settings = await _httpClient.GetFromJsonAsync<OcrSettings>(
-                "api/settings",
-                cancellationToken).ConfigureAwait(false);
-
-            return settings ?? new OcrSettings();
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Failed to get settings");
-            return new OcrSettings();
-        }
+        // NOTE: Settings endpoint not yet implemented in API
+        // Return default settings for now
+        _logger.LogDebug("Settings endpoint not implemented - returning defaults");
+        await Task.CompletedTask;
+        return new OcrSettings();
     }
 
     /// <inheritdoc />
     public async Task<bool> UpdateSettingsAsync(OcrSettings settings, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var response = await _httpClient.PutAsJsonAsync(
-                "api/settings",
-                settings,
-                cancellationToken).ConfigureAwait(false);
-
-            return response.IsSuccessStatusCode;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Update settings request failed");
-            return false;
-        }
+        // NOTE: Settings endpoint not yet implemented in API
+        _logger.LogWarning("Settings endpoint not implemented - settings not saved");
+        await Task.CompletedTask;
+        return false;
     }
 
     /// <inheritdoc />
     public async Task<Stream?> DownloadOutputAsync(string jobId, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var response = await _httpClient.GetAsync(
-                $"api/ocr/jobs/{Uri.EscapeDataString(jobId)}/download",
-                HttpCompletionOption.ResponseHeadersRead,
-                cancellationToken).ConfigureAwait(false);
-
-            if (response.IsSuccessStatusCode)
-            {
-                return await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-            }
-
-            return null;
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogWarning(ex, "Download output request failed for {JobId}", jobId);
-            return null;
-        }
+        // NOTE: Download endpoint not yet implemented in API
+        _logger.LogWarning("Download endpoint not implemented for job {JobId}", jobId);
+        await Task.CompletedTask;
+        return null;
     }
 }

@@ -4,7 +4,7 @@
 
 ## Overview
 
-`KazoOCR.Core` is a pure .NET library with no external dependencies. It contains all business logic for PDF OCR processing.
+`KazoOCR.Core` is a .NET library focused on PDF OCR business logic. It only relies on `Microsoft.Extensions.Logging.Abstractions` for structured logging contracts (`ILogger`) and does not depend on runtime-specific hosting frameworks.
 
 ## Key Components
 

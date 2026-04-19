@@ -9,6 +9,12 @@ namespace KazoOCR.Core;
 /// </summary>
 public sealed class WatcherService : IWatcherService
 {
+    // Allows short event bursts while keeping memory usage bounded.
+    // Increase only if sustained high-volume folder drops are expected.
+    private const int QueueCapacity = 1024;
+    private const int ValidationRetryDelayMilliseconds = 200;
+    private const int ValidationRetryMaxAttempts = 3;
+
     private readonly IOcrFileService _fileService;
     private readonly IOcrProcessRunner _processRunner;
     private readonly ILogger<WatcherService> _logger;
@@ -45,94 +51,122 @@ public sealed class WatcherService : IWatcherService
             throw new DirectoryNotFoundException($"Watch directory does not exist: {watchPath}");
         }
 
-        _logger.LogInformation("Starting watcher on {WatchPath}", watchPath);
-
-        var channel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions
+        var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(QueueCapacity)
         {
             SingleReader = true,
-            SingleWriter = false
+            SingleWriter = false,
+            FullMode = BoundedChannelFullMode.DropWrite
         });
 
-        using var watcher = CreateFileSystemWatcher(watchPath, settings.Suffix, channel.Writer);
+        void OnCreated(object sender, FileSystemEventArgs eventArgs) => TryQueue(eventArgs.FullPath);
+        void OnRenamed(object sender, RenamedEventArgs eventArgs) => TryQueue(eventArgs.FullPath);
+        void OnError(object sender, ErrorEventArgs eventArgs) =>
+            _logger.LogError(eventArgs.GetException(), "File system watcher error in {Directory}", watchPath);
 
-        try
+        void TryQueue(string path)
         {
-            await ProcessChannelAsync(channel.Reader, settings, cancellationToken).ConfigureAwait(false);
-        }
-        finally
-        {
-            _logger.LogInformation("Stopping watcher on {WatchPath}", watchPath);
-        }
-    }
-
-    private FileSystemWatcher CreateFileSystemWatcher(
-        string watchPath,
-        string suffix,
-        ChannelWriter<string> writer)
-    {
-        var watcher = new FileSystemWatcher(watchPath, "*.pdf")
-        {
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime,
-            IncludeSubdirectories = false,
-            EnableRaisingEvents = true
-        };
-
-        watcher.Created += (_, e) =>
-        {
-            if (_fileService.IsAlreadyProcessed(e.FullPath, suffix))
+            if (!ShouldProcess(path, settings.Suffix))
             {
-                _logger.LogDebug("Skipping already processed file: {FilePath}", e.FullPath);
                 return;
             }
 
-            _logger.LogInformation("Detected new file: {FilePath}", e.FullPath);
-
-            if (!writer.TryWrite(e.FullPath))
+            if (channel.Writer.TryWrite(path))
             {
-                _logger.LogWarning("Failed to enqueue file: {FilePath}", e.FullPath);
+                _logger.LogInformation("Queued PDF for processing: {File}", path);
+                return;
             }
-        };
 
-        watcher.Error += (_, e) =>
+            _logger.LogWarning("Queue is full, dropping file event: {File}", path);
+        }
+
+        using var watcher = new FileSystemWatcher(watchPath, "*")
         {
-            _logger.LogError(e.GetException(), "FileSystemWatcher error");
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime
         };
 
-        return watcher;
+        watcher.Created += OnCreated;
+        watcher.Renamed += OnRenamed;
+        watcher.Error += OnError;
+
+        using var registration = cancellationToken.Register(() => channel.Writer.TryComplete());
+        watcher.EnableRaisingEvents = true;
+
+        _logger.LogInformation("Watching directory {Directory} for new PDF files.", watchPath);
+
+        try
+        {
+            await foreach (var filePath in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                await ProcessFileAsync(filePath, settings, cancellationToken);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Watcher canceled for directory {Directory}.", watchPath);
+            throw;
+        }
+        finally
+        {
+            watcher.EnableRaisingEvents = false;
+            watcher.Created -= OnCreated;
+            watcher.Renamed -= OnRenamed;
+            watcher.Error -= OnError;
+
+            _logger.LogInformation("Stopped watching directory {Directory}.", watchPath);
+        }
     }
 
-    private async Task ProcessChannelAsync(
-        ChannelReader<string> reader,
-        OcrSettings settings,
-        CancellationToken cancellationToken)
+    private bool ShouldProcess(string path, string suffix)
     {
-        await foreach (var filePath in reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
+        if (string.IsNullOrWhiteSpace(path))
         {
-            await ProcessFileAsync(filePath, settings, cancellationToken).ConfigureAwait(false);
+            return false;
         }
+
+        if (!path.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(suffix) && _fileService.IsAlreadyProcessed(path, suffix))
+        {
+            _logger.LogDebug("Ignoring file with OCR suffix to avoid loop: {File}", path);
+            return false;
+        }
+
+        return true;
     }
 
     private async Task ProcessFileAsync(string filePath, OcrSettings settings, CancellationToken cancellationToken)
     {
+        if (_fileService.IsAlreadyProcessed(filePath, settings.Suffix))
+        {
+            _logger.LogDebug("Skipping already processed file: {File}", filePath);
+            return;
+        }
+
+        if (!await ValidateInputWithRetriesAsync(filePath, cancellationToken))
+        {
+            return;
+        }
+
+        var outputPath = _fileService.ComputeOutputPath(filePath, settings.Suffix);
+
         try
         {
-            var outputPath = _fileService.ComputeOutputPath(filePath, settings.Suffix);
-            _logger.LogInformation("Processing {InputPath} -> {OutputPath}", filePath, outputPath);
-
-            var result = await _processRunner.RunAsync(settings, filePath, outputPath, cancellationToken).ConfigureAwait(false);
-
+            var result = await _processRunner.RunAsync(settings, filePath, outputPath, cancellationToken);
             if (result.IsSuccess)
             {
-                _logger.LogInformation("Successfully processed {InputPath}", filePath);
+                _logger.LogInformation("Processed file: {Input} -> {Output}", filePath, outputPath);
+                return;
             }
-            else
-            {
-                _logger.LogWarning(
-                    "OCR failed for {InputPath} (exit code {ExitCode}): {Error}",
-                    filePath,
-                    result.ExitCode,
-                    result.StandardError);
-            }
+
+            _logger.LogWarning(
+                "OCR failed for {InputPath} (exit code {ExitCode}): {Error}",
+                filePath,
+                result.ExitCode,
+                result.StandardError);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -141,7 +175,42 @@ public sealed class WatcherService : IWatcherService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing file {FilePath}", filePath);
+            _logger.LogError(ex, "Unexpected error while processing {File}", filePath);
         }
     }
+
+    private async Task<bool> ValidateInputWithRetriesAsync(string filePath, CancellationToken cancellationToken)
+    {
+        ValidationResult? lastValidation = null;
+        for (var attempt = 1; attempt <= ValidationRetryMaxAttempts; attempt++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            lastValidation = _fileService.ValidateInput(filePath);
+            if (lastValidation.IsValid)
+            {
+                return true;
+            }
+
+            if (!IsTransientValidationFailure(lastValidation) || attempt == ValidationRetryMaxAttempts)
+            {
+                break;
+            }
+
+            _logger.LogDebug(
+                "Validation failed for {File}; scheduling retry {NextAttempt}/{MaxAttempts}",
+                filePath,
+                attempt + 1,
+                ValidationRetryMaxAttempts);
+            await Task.Delay(ValidationRetryDelayMilliseconds, cancellationToken);
+        }
+
+        _logger.LogWarning("Skipping invalid input file: {File}. Errors: {Errors}", filePath, string.Join("; ", lastValidation?.Errors ?? []));
+        return false;
+    }
+
+    private static bool IsTransientValidationFailure(ValidationResult validationResult) =>
+        validationResult.Errors.Any(error =>
+            error.Contains("Cannot access file", StringComparison.OrdinalIgnoreCase) ||
+            error.Contains("Access denied", StringComparison.OrdinalIgnoreCase));
 }

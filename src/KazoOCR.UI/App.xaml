@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <Application xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:KazoOCR.UI.Converters"
              x:Class="KazoOCR.UI.App">
+    <Application.Resources>
+        <ResourceDictionary>
+            <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
+            <converters:PercentToProgressConverter x:Key="PercentToProgressConverter" />
+        </ResourceDictionary>
+    </Application.Resources>
 </Application>

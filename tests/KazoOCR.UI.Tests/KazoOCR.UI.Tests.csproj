@@ -5,7 +5,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
-  <!-- Propagate BuildMAUI from UI project -->
+  <!-- UI tests only run on Windows where MAUI can be built -->
   <PropertyGroup>
     <BuildMAUI Condition="'$(BuildMAUI)' == '' AND '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">true</BuildMAUI>
     <BuildMAUI Condition="'$(BuildMAUI)' == ''">false</BuildMAUI>
@@ -19,6 +19,7 @@
     <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
     <PackageReference Include="FluentAssertions" Version="8.2.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
     <PackageReference Include="Moq" Version="4.20.72" />
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
@@ -26,8 +27,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\KazoOCR.Core\KazoOCR.Core.csproj" />
-    <ProjectReference Include="..\..\src\KazoOCR.CLI\KazoOCR.CLI.csproj" />
-    <ProjectReference Include="..\..\src\KazoOCR.Docker\KazoOCR.Docker.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.UI\KazoOCR.UI.csproj" />
   </ItemGroup>
 

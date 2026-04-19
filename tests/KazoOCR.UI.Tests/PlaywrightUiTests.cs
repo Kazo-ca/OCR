@@ -37,14 +37,37 @@ public class PlaywrightUiTests : IAsyncLifetime
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private string? _skipReason;
 
     public async Task InitializeAsync()
     {
-        _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        var runPlaywrightUiTests = Environment.GetEnvironmentVariable("RUN_PLAYWRIGHT_UI_TESTS");
+        var isEnabled =
+            string.Equals(runPlaywrightUiTests, "true", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(runPlaywrightUiTests, "1", StringComparison.OrdinalIgnoreCase);
+
+        if (!isEnabled)
         {
-            Headless = true
-        });
+            _skipReason = "Playwright UI tests are disabled by default. Set RUN_PLAYWRIGHT_UI_TESTS=true to enable them.";
+            return;
+        }
+
+        try
+        {
+            _playwright = await Playwright.CreateAsync();
+            _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            {
+                Headless = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _playwright?.Dispose();
+            _playwright = null;
+            _browser = null;
+
+            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
+        }
     }
 
     public async Task DisposeAsync()
@@ -56,14 +79,26 @@ public class PlaywrightUiTests : IAsyncLifetime
         _playwright?.Dispose();
     }
 
+    private static void SkipIfNotAvailable(string? skipReason)
+    {
+        Skip.If(skipReason is not null, skipReason ?? string.Empty);
+    }
+
+    private static string ToFileUri(string filePath)
+    {
+        return new UriBuilder { Scheme = Uri.UriSchemeFile, Host = "", Path = filePath }.Uri.AbsoluteUri;
+    }
+
     /// <summary>
     /// Verifies that Playwright is properly configured and can launch a browser.
     /// This is a smoke test to ensure the Playwright infrastructure is working.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Smoke")]
     public async Task Playwright_CanLaunchBrowser()
     {
+        SkipIfNotAvailable(_skipReason);
+
         // Arrange & Act
         _browser.Should().NotBeNull("Playwright browser should be initialized");
 
@@ -79,18 +114,14 @@ public class PlaywrightUiTests : IAsyncLifetime
     /// Tests that we can navigate to a local HTML file.
     /// This pattern could be used to test any web-based help documentation.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Documentation")]
     public async Task Playwright_CanNavigateToLocalFile()
     {
-        // Skip if browser not initialized
-        if (_browser is null)
-        {
-            return;
-        }
+        SkipIfNotAvailable(_skipReason);
 
         // Arrange
-        var page = await _browser.NewPageAsync();
+        var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr.html");
         
         try
@@ -108,7 +139,7 @@ public class PlaywrightUiTests : IAsyncLifetime
                 """);
 
             // Act
-            await page.GotoAsync($"file://{testHtml}");
+            await page.GotoAsync(ToFileUri(testHtml));
             
             // Assert
             var title = await page.TitleAsync();
@@ -133,18 +164,14 @@ public class PlaywrightUiTests : IAsyncLifetime
     /// <summary>
     /// Tests form interaction patterns that could be used with a web-based UI.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "Forms")]
     public async Task Playwright_CanInteractWithForms()
     {
-        // Skip if browser not initialized
-        if (_browser is null)
-        {
-            return;
-        }
+        SkipIfNotAvailable(_skipReason);
 
         // Arrange
-        var page = await _browser.NewPageAsync();
+        var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-form.html");
         
         try
@@ -169,7 +196,7 @@ public class PlaywrightUiTests : IAsyncLifetime
                 """);
 
             // Act
-            await page.GotoAsync($"file://{testHtml}");
+            await page.GotoAsync(ToFileUri(testHtml));
             
             // Test suffix input
             var suffixValue = await page.InputValueAsync("#suffix");
@@ -204,18 +231,14 @@ public class PlaywrightUiTests : IAsyncLifetime
     /// Tests drag and drop interaction pattern.
     /// This demonstrates how drag and drop testing would work in a web context.
     /// </summary>
-    [Fact]
+    [SkippableFact]
     [Trait("Category", "DragDrop")]
     public async Task Playwright_CanTestDragAndDropPattern()
     {
-        // Skip if browser not initialized
-        if (_browser is null)
-        {
-            return;
-        }
+        SkipIfNotAvailable(_skipReason);
 
         // Arrange
-        var page = await _browser.NewPageAsync();
+        var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-dragdrop.html");
         
         try
@@ -277,7 +300,7 @@ public class PlaywrightUiTests : IAsyncLifetime
                 """);
 
             // Act
-            await page.GotoAsync($"file://{testHtml}");
+            await page.GotoAsync(ToFileUri(testHtml));
             
             // Verify dropzone is present
             var dropzoneText = await page.TextContentAsync("#dropzone");

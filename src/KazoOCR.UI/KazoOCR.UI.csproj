@@ -7,8 +7,9 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(BuildMAUI)' == 'true'">
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>WinExe</OutputType>
+    <WindowsPackageType>None</WindowsPackageType>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <EnableDefaultMauiItems>true</EnableDefaultMauiItems>
@@ -17,6 +18,11 @@
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <!-- Disable non-Windows MAUI platforms (no Tizen, Android, iOS, macOS support) -->
+    <MauiEnableTizenTargetFramework>false</MauiEnableTizenTargetFramework>
+    <MauiEnableAndroidTargetFramework>false</MauiEnableAndroidTargetFramework>
+    <MauiEnableiOSTargetFramework>false</MauiEnableiOSTargetFramework>
+    <MauiEnableMacCatalystTargetFramework>false</MauiEnableMacCatalystTargetFramework>
   </PropertyGroup>
 
   <!-- When not building MAUI, create a minimal target to satisfy solution build -->
@@ -28,7 +34,9 @@
 
   <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
-    <PackageReference Include="CommunityToolkit.Maui" Version="11.1.0" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.41" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.1.0" />
   </ItemGroup>
 
 </Project>

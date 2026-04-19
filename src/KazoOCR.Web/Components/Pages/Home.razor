@@ -118,9 +118,9 @@
             _jobs = jobs.OrderByDescending(j => j.CreatedAt).ToList();
             _lastRefresh = DateTime.UtcNow;
         }
-        catch (Exception)
+        catch (OperationCanceledException)
         {
-            // Ignore errors during polling
+            // Ignore expected cancellation during shutdown/disposal
         }
         finally
         {

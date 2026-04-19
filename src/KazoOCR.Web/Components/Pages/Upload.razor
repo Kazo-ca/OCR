@@ -159,7 +159,7 @@
 </style>
 
 @code {
-    private OcrOptions _options = new();
+    private readonly OcrOptions _options = new();
     private IBrowserFile? _selectedFile;
     private string _selectedFileName = string.Empty;
     private bool _uploading;
@@ -235,9 +235,17 @@
                 _errorMessage = response.Error ?? "Failed to process file";
             }
         }
-        catch (Exception ex)
+        catch (IOException ex)
         {
-            _errorMessage = $"Error: {ex.Message}";
+            _errorMessage = $"File error: {ex.Message}";
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Upload error: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Upload request timed out. Please try again.";
         }
         finally
         {

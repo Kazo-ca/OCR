@@ -57,6 +57,10 @@ public sealed class AuthStateService
             OnAuthStateChanged?.Invoke();
             return _cachedStatus;
         }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Failed to refresh auth status");

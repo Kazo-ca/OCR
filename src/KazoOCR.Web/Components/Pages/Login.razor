@@ -43,7 +43,7 @@
 </div>
 
 @code {
-    private LoginModel _loginModel = new();
+    private readonly LoginModel _loginModel = new();
     private bool _loading;
     private string? _errorMessage;
 
@@ -83,9 +83,13 @@
                 _errorMessage = "Invalid password. Please try again.";
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _errorMessage = $"Login failed: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Login request timed out. Please try again.";
         }
         finally
         {

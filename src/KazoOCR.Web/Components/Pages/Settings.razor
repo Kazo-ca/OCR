@@ -169,9 +169,13 @@
         {
             _settings = await ApiClient.GetSettingsAsync();
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _errorMessage = $"Failed to load settings: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Request timed out while loading settings.";
         }
         finally
         {
@@ -197,9 +201,13 @@
                 _errorMessage = "Failed to save settings";
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _errorMessage = $"Error: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Request timed out while saving settings.";
         }
         finally
         {

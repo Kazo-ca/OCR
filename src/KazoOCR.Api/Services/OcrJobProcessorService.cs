@@ -54,7 +54,7 @@ public sealed class OcrJobProcessorService : BackgroundService
             {
                 break;
             }
-            catch (Exception ex)
+            catch (InvalidOperationException ex)
             {
                 _logger.LogError(ex, "Error in job processing loop");
                 await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken).ConfigureAwait(false);

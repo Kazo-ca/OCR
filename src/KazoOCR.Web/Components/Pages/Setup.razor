@@ -1,0 +1,163 @@
+@page "/setup"
+@layout AuthLayout
+@inject IKazoApiClient ApiClient
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Setup - KazoOCR</PageTitle>
+
+<h5 class="text-center mb-4">First-Time Setup</h5>
+
+<p class="text-center text-muted mb-4">
+    Welcome to KazoOCR! Please create a password to secure your web interface.
+</p>
+
+@if (_errorMessage != null)
+{
+    <div class="alert alert-danger">
+        @_errorMessage
+    </div>
+}
+
+<EditForm Model="_setupModel" OnValidSubmit="HandleSetup">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">New Password</label>
+        <InputText type="password" @bind-Value="_setupModel.Password" class="form-control"
+                   placeholder="Enter a secure password" autofocus />
+        <ValidationMessage For="@(() => _setupModel.Password)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Confirm Password</label>
+        <InputText type="password" @bind-Value="_setupModel.ConfirmPassword" class="form-control"
+                   placeholder="Confirm your password" />
+        <ValidationMessage For="@(() => _setupModel.ConfirmPassword)" />
+    </div>
+
+    @* Password validation feedback *@
+    @if (!string.IsNullOrEmpty(_setupModel.Password))
+    {
+        <div class="mb-3">
+            <small class="text-muted">Password requirements:</small>
+            <ul class="list-unstyled mb-0 small">
+                <li class="@(HasMinLength ? "text-success" : "text-danger")">
+                    <i class="bi @(HasMinLength ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least 8 characters
+                </li>
+                <li class="@(HasUppercase ? "text-success" : "text-danger")">
+                    <i class="bi @(HasUppercase ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least one uppercase letter
+                </li>
+                <li class="@(HasDigit ? "text-success" : "text-danger")">
+                    <i class="bi @(HasDigit ? "bi-check-circle" : "bi-x-circle")"></i>
+                    At least one digit
+                </li>
+                <li class="@(PasswordsMatch ? "text-success" : "text-danger")">
+                    <i class="bi @(PasswordsMatch ? "bi-check-circle" : "bi-x-circle")"></i>
+                    Passwords match
+                </li>
+            </ul>
+        </div>
+    }
+
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary" disabled="@(_loading || !IsFormValid)">
+            @if (_loading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            Create Password
+        </button>
+    </div>
+</EditForm>
+
+<div class="mt-4 text-center">
+    <small class="text-muted">
+        This password will be required to access the KazoOCR web interface.
+    </small>
+</div>
+
+@code {
+    private SetupModel _setupModel = new();
+    private bool _loading;
+    private string? _errorMessage;
+
+    // Password validation helpers
+    private bool HasMinLength => _setupModel.Password.Length >= 8;
+    private bool HasUppercase => _setupModel.Password.Any(char.IsUpper);
+    private bool HasDigit => _setupModel.Password.Any(char.IsDigit);
+    private bool PasswordsMatch => 
+        !string.IsNullOrEmpty(_setupModel.ConfirmPassword) &&
+        _setupModel.Password == _setupModel.ConfirmPassword;
+
+    private bool IsFormValid =>
+        HasMinLength && HasUppercase && HasDigit && PasswordsMatch;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if already configured - always check server-side
+        var status = await ApiClient.GetAuthStatusAsync();
+
+        if (status.Configured)
+        {
+            // Already configured: redirect to login
+            Navigation.NavigateTo("/login", forceLoad: true);
+        }
+    }
+
+    private async Task HandleSetup()
+    {
+        if (!IsFormValid)
+        {
+            _errorMessage = "Please ensure the password meets all requirements.";
+            return;
+        }
+
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            // Double-check server status before setup
+            var status = await ApiClient.GetAuthStatusAsync();
+            if (status.Configured)
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+
+            var success = await ApiClient.SetupPasswordAsync(
+                new SetupRequest 
+                { 
+                    Password = _setupModel.Password, 
+                    ConfirmPassword = _setupModel.ConfirmPassword 
+                });
+
+            if (success)
+            {
+                // Redirect to login with success message
+                Navigation.NavigateTo("/login?setup=success", forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = "Setup failed. The password may already be configured.";
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Setup failed: {ex.Message}";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class SetupModel
+    {
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

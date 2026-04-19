@@ -5,7 +5,11 @@ using Scalar.AspNetCore;
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure port from environment variable
-var port = Environment.GetEnvironmentVariable("KAZO_API_PORT") ?? "5000";
+const int DefaultApiPort = 5000;
+var portValue = Environment.GetEnvironmentVariable("KAZO_API_PORT");
+var port = int.TryParse(portValue, out var parsedPort) && parsedPort is >= 1 and <= 65535
+    ? parsedPort
+    : DefaultApiPort;
 builder.WebHost.UseUrls($"http://*:{port}");
 
 // Add services to the container

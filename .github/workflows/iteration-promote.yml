@@ -1,115 +1,211 @@
 name: "Promote Next Iteration"
 
-# Runs when a PR is merged, when an issue is closed, or manually.
-# Stateless: checks the current label state rather than relying on the event payload.
-# Three triggers because timing gaps exist between each event:
-#   - pull_request closed: fires when the PR merges, before linked issues are closed
-#   - issues closed: fires when the linked issue is actually closed (may lag behind PR)
-#   - workflow_dispatch: manual safety net / re-run after corrections
 on:
-  pull_request:
-    types: [closed]
   issues:
     types: [closed]
-  workflow_dispatch:
 
 permissions:
-  issues: write   # required to add the Ready label
+  issues: read
 
 jobs:
   promote:
-    # On PR events, only run when the PR was actually merged (not just closed/abandoned)
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
-      - name: Apply Ready label to next iteration issues
+      - name: Promote next iteration items from Backlog to Todo
         uses: actions/github-script@v7
+        env:
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.PROJECT_TOKEN }}
           script: |
-            const READY_LABEL  = "Ready";
-            const ONHOLD_LABEL = "OnHold";
-            const ITER_PATTERN = /^iteration-(\d+)$/;
+            const PROJECT_ID = "PVT_kwDOD_m3A84BU243";
+            const STATUS_FIELD_ID = "PVTSSF_lADOD_m3A84BU243zhGUPds";
+            const ITERATION_FIELD_ID = "PVTIF_lADOD_m3A84BU243zhGXjjc";
 
-            const owner = context.repo.owner;
-            const repo  = context.repo.repo;
+            // --- 1. Fetch all project items with their Status and Iteration ---
+            const query = `query($projectId: ID!) {
+              node(id: $projectId) {
+                ... on ProjectV2 {
+                  items(first: 100) {
+                    nodes {
+                      id
+                      content {
+                        ... on Issue { number title state }
+                        ... on DraftIssue { title }
+                      }
+                      fieldValues(first: 20) {
+                        nodes {
+                          ... on ProjectV2ItemFieldSingleSelectValue {
+                            field { ... on ProjectV2SingleSelectField { name id } }
+                            name
+                            optionId
+                          }
+                          ... on ProjectV2ItemFieldIterationValue {
+                            field { ... on ProjectV2IterationField { name id } }
+                            title
+                            iterationId
+                            startDate
+                            duration
+                          }
+                        }
+                      }
+                    }
+                  }
+                  field(name: "Status") {
+                    ... on ProjectV2SingleSelectField {
+                      options { id name }
+                    }
+                  }
+                  field(name: "Iteration") {
+                    ... on ProjectV2IterationField {
+                      configuration {
+                        iterations { id title startDate duration }
+                      }
+                    }
+                  }
+                }
+              }
+            }`;
 
-            // --- 1. Check if any open issues already carry the Ready label ---
-            const readyIssues = await github.paginate(github.rest.issues.listForRepo, {
-              owner, repo,
-              labels: READY_LABEL,
-              state: "open",
-              per_page: 100
-            });
+            const result = await github.graphql(query, { projectId: PROJECT_ID });
+            const project = result.node;
 
-            const activeReady = readyIssues.filter(i => !i.labels.some(l => l.name === ONHOLD_LABEL));
-
-            if (activeReady.length > 0) {
-              core.info(
-                `${activeReady.length} open issue(s) still have the Ready label: ` +
-                activeReady.map(i => `#${i.number}`).join(", ") +
-                ". Nothing to promote."
-              );
+            // --- 2. Parse status options ---
+            const statusOptions = {};
+            for (const opt of project.field.options || []) {
+              statusOptions[opt.name] = opt.id;
+            }
+            const BACKLOG_ID = statusOptions["Backlog"];
+            const TODO_ID = statusOptions["Todo"];
+            if (!BACKLOG_ID || !TODO_ID) {
+              core.info("Missing Backlog or Todo status option. Skipping.");
               return;
             }
 
-            core.info("No open Ready issues found. Looking for the next iteration to promote...");
+            // --- 3. Get sorted iterations ---
+            // Fetch from the second field query (Iteration)
+            const iterQuery = `query($projectId: ID!) {
+              node(id: $projectId) {
+                ... on ProjectV2 {
+                  field(name: "Iteration") {
+                    ... on ProjectV2IterationField {
+                      configuration {
+                        iterations { id title startDate duration }
+                      }
+                    }
+                  }
+                }
+              }
+            }`;
+            const iterResult = await github.graphql(iterQuery, { projectId: PROJECT_ID });
+            const iterations = iterResult.node.field.configuration.iterations
+              .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
-            // --- 2. Find the lowest iteration-X that has open, non-OnHold issues ---
-            const openIssues = await github.paginate(github.rest.issues.listForRepo, {
-              owner, repo,
-              state: "open",
-              per_page: 100
-            });
+            core.info(`Found ${iterations.length} iterations: ${iterations.map(i => i.title).join(", ")}`);
 
-            let minIter = null;
-            for (const issue of openIssues) {
-              if (issue.labels.some(l => l.name === ONHOLD_LABEL)) continue;
-              for (const label of issue.labels) {
-                const m = ITER_PATTERN.exec(label.name);
-                if (m) {
-                  const n = parseInt(m[1], 10);
-                  if (minIter === null || n < minIter) minIter = n;
+            // --- 4. Build a map: iterationId -> [items] ---
+            const items = project.items.nodes;
+            const iterationItems = {};
+            for (const iter of iterations) {
+              iterationItems[iter.id] = [];
+            }
+
+            for (const item of items) {
+              let itemIterId = null;
+              let itemStatus = null;
+              for (const fv of item.fieldValues.nodes) {
+                if (fv.iterationId) itemIterId = fv.iterationId;
+                if (fv.optionId && fv.field?.name === "Status") itemStatus = fv.name;
+              }
+              if (itemIterId && iterationItems[itemIterId]) {
+                iterationItems[itemIterId].push({
+                  id: item.id,
+                  status: itemStatus,
+                  title: item.content?.title || "(draft)",
+                  state: item.content?.state || "UNKNOWN"
+                });
+              }
+            }
+
+            // --- 5. Find which iteration the closed issue belongs to ---
+            const closedIssueNumber = context.payload.issue.number;
+            let closedIterationId = null;
+
+            for (const item of items) {
+              if (item.content?.number === closedIssueNumber) {
+                for (const fv of item.fieldValues.nodes) {
+                  if (fv.iterationId) closedIterationId = fv.iterationId;
                 }
               }
             }
 
-            if (minIter === null) {
-              core.info("No open issues with an iteration label found. Nothing to promote.");
+            if (!closedIterationId) {
+              core.info(`Issue #${closedIssueNumber} is not in any iteration. Skipping.`);
               return;
             }
 
-            const nextIterLabel = `iteration-${minIter}`;
-            core.info(`Next iteration to promote: ${nextIterLabel}`);
+            const closedIter = iterations.find(i => i.id === closedIterationId);
+            core.info(`Issue #${closedIssueNumber} belongs to iteration "${closedIter?.title}"`);
 
-            // --- 3. Ensure the Ready label exists in the repo ---
-            try {
-              await github.rest.issues.getLabel({ owner, repo, name: READY_LABEL });
-            } catch {
-              await github.rest.issues.createLabel({
-                owner, repo,
-                name: READY_LABEL,
-                color: "0E8A16",
-                description: "Ready to start — next iteration promoted"
-              });
-              core.info(`Created label: ${READY_LABEL}`);
+            // --- 6. Check if ALL items in that iteration are Done (closed) ---
+            const iterItems = iterationItems[closedIterationId] || [];
+            const allDone = iterItems.every(i => i.status === "Done" || i.state === "CLOSED");
+
+            if (!allDone) {
+              const remaining = iterItems.filter(i => i.status !== "Done" && i.state !== "CLOSED");
+              core.info(`Iteration "${closedIter?.title}" still has ${remaining.length} open item(s): ${remaining.map(i => i.title).join(", ")}`);
+              core.info("Not all items are Done. Skipping promotion.");
+              return;
             }
 
-            // --- 4. Apply Ready label to all open non-OnHold issues in that iteration ---
-            const toPromote = openIssues.filter(i =>
-              !i.labels.some(l => l.name === ONHOLD_LABEL) &&
-              i.labels.some(l => l.name === nextIterLabel)
-            );
+            core.info(`All items in "${closedIter?.title}" are Done!`);
 
-            for (const issue of toPromote) {
-              await github.rest.issues.addLabels({
-                owner, repo,
-                issue_number: issue.number,
-                labels: [READY_LABEL]
-              });
-              core.info(`  ✓ #${issue.number} "${issue.title}" → ${READY_LABEL}`);
+            // --- 7. Find the NEXT iteration ---
+            const currentIdx = iterations.findIndex(i => i.id === closedIterationId);
+            if (currentIdx === -1 || currentIdx >= iterations.length - 1) {
+              core.info("No next iteration found. Nothing to promote.");
+              return;
             }
 
-            core.info(`Promoted ${toPromote.length} issue(s) from ${nextIterLabel}.`);
+            const nextIter = iterations[currentIdx + 1];
+            core.info(`Promoting items from "${nextIter.title}" (Backlog → Todo)`);
 
+            // --- 8. Promote: set Status from Backlog to Todo ---
+            const mutation = `mutation($projectId: ID!, $itemId: ID!, $fieldId: ID!, $optionId: String!) {
+              updateProjectV2ItemFieldValue(input: {
+                projectId: $projectId
+                itemId: $itemId
+                fieldId: $fieldId
+                value: { singleSelectOptionId: $optionId }
+              }) { projectV2Item { id } }
+            }`;
 
+            const nextItems = iterationItems[nextIter.id] || [];
+            let promoted = 0;
+            for (const item of nextItems) {
+              if (item.status === "Backlog") {
+                await github.graphql(mutation, {
+                  projectId: PROJECT_ID,
+                  itemId: item.id,
+                  fieldId: STATUS_FIELD_ID,
+                  optionId: TODO_ID
+                });
+                core.info(`  ✓ "${item.title}" → Todo`);
+                promoted++;
+              }
+            }
+
+            core.info(`Promoted ${promoted} item(s) from "${nextIter.title}" to Todo.`);
+
+            // --- 9. Also set completed iteration items to Done status (belt & suspenders) ---
+            for (const item of iterItems) {
+              if (item.status !== "Done") {
+                await github.graphql(mutation, {
+                  projectId: PROJECT_ID,
+                  itemId: item.id,
+                  fieldId: STATUS_FIELD_ID,
+                  optionId: statusOptions["Done"]
+                });
+                core.info(`  ✓ "${item.title}" → Done (sync)`);
+              }
+            }

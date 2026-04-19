@@ -83,7 +83,7 @@ public partial class OcrController(
 
         // Save the file temporarily and process in background
         // Use application-specific temp directory to avoid conflicts
-        var tempDir = Path.Combine(Path.GetTempPath(), "KazoOCR");
+        var tempDir = Path.Join(Path.GetTempPath(), "KazoOCR");
         Directory.CreateDirectory(tempDir);
         var tempPath = Path.Combine(tempDir, $"{job.Id}{extension}");
         await using (var stream = new FileStream(tempPath, FileMode.Create))

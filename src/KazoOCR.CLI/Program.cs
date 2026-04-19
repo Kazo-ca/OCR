@@ -10,9 +10,9 @@ using Microsoft.Extensions.Logging;
 // Check if running as Windows Service (--service flag)
 if (args.Contains("--service"))
 {
-    // Remove the --service flag and get config path
+    // Remove all occurrences of --service flag and get config path
     var argsList = args.ToList();
-    argsList.Remove("--service");
+    argsList.RemoveAll(x => x == "--service");
 
     string? configPath = null;
     var configIndex = argsList.IndexOf("--config");

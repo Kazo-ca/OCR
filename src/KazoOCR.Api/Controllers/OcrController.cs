@@ -143,7 +143,8 @@ public sealed class OcrController : ControllerBase
             return NotFound(new { error = "Job not found" });
         }
 
-        _logger.LogInformation("Removed OCR job {JobId}", id);
+        var safeJobId = id.Replace("\r", string.Empty).Replace("\n", string.Empty);
+        _logger.LogInformation("Removed OCR job {JobId}", safeJobId);
         return NoContent();
     }
 

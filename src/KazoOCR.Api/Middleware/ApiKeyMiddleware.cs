@@ -65,7 +65,7 @@ public class ApiKeyMiddleware
         // Check for API key header
         if (!context.Request.Headers.TryGetValue(ApiKeyHeaderName, out var providedApiKey))
         {
-            _logger.LogWarning("Request to {Path} missing {HeaderName} header", context.Request.Path, ApiKeyHeaderName);
+            _logger.LogWarning("Request missing {HeaderName} header", ApiKeyHeaderName);
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "API key required" });
             return;
@@ -74,7 +74,7 @@ public class ApiKeyMiddleware
         // Validate API key
         if (!string.Equals(_apiKey, providedApiKey.ToString(), StringComparison.Ordinal))
         {
-            _logger.LogWarning("Request to {Path} with invalid API key", context.Request.Path);
+            _logger.LogWarning("Request with invalid API key");
             context.Response.StatusCode = StatusCodes.Status401Unauthorized;
             await context.Response.WriteAsJsonAsync(new { error = "Invalid API key" });
             return;

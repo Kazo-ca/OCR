@@ -113,10 +113,7 @@ public class AuthService : IAuthService
     {
         // Generate a cryptographically secure random token
         var tokenBytes = new byte[32];
-        using (var rng = RandomNumberGenerator.Create())
-        {
-            rng.GetBytes(tokenBytes);
-        }
+        RandomNumberGenerator.Fill(tokenBytes);
         var token = Convert.ToBase64String(tokenBytes);
 
         var expiresAt = DateTimeOffset.UtcNow.Add(_tokenExpiration);

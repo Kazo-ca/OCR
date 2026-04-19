@@ -183,8 +183,9 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
 
         IsProcessing = true;
         Progress = 0;
-        _cancellationTokenSource = new CancellationTokenSource();
-        var token = _cancellationTokenSource.Token;
+        using var cts = new CancellationTokenSource();
+        _cancellationTokenSource = cts;
+        var token = cts.Token;
 
         var files = PendingFiles.ToList();
         var total = files.Count;
@@ -229,7 +230,17 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
             AddLog("Processing was cancelled.");
             StatusMessage = "Processing cancelled.";
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            AddLog($"I/O error: {ex.Message}");
+            StatusMessage = "Processing failed with I/O error.";
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            AddLog($"Access denied: {ex.Message}");
+            StatusMessage = "Processing failed: access denied.";
+        }
+        catch (InvalidOperationException ex)
         {
             AddLog($"Error: {ex.Message}");
             StatusMessage = "Processing failed with error.";
@@ -237,7 +248,6 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
         finally
         {
             IsProcessing = false;
-            _cancellationTokenSource?.Dispose();
             _cancellationTokenSource = null;
         }
     }
@@ -315,7 +325,17 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
         {
             throw;
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            AddLog($"  I/O error: {ex.Message}");
+            return false;
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            AddLog($"  Access denied: {ex.Message}");
+            return false;
+        }
+        catch (InvalidOperationException ex)
         {
             AddLog($"  Error: {ex.Message}");
             return false;

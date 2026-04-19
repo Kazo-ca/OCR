@@ -91,7 +91,7 @@ public class PlaywrightUiTests : IAsyncLifetime
 
         // Arrange
         var page = await _browser.NewPageAsync();
-        var testHtml = Path.Combine(Path.GetTempPath(), "test-kazoocr.html");
+        var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr.html");
         
         try
         {
@@ -145,7 +145,7 @@ public class PlaywrightUiTests : IAsyncLifetime
 
         // Arrange
         var page = await _browser.NewPageAsync();
-        var testHtml = Path.Combine(Path.GetTempPath(), "test-kazoocr-form.html");
+        var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-form.html");
         
         try
         {
@@ -216,7 +216,7 @@ public class PlaywrightUiTests : IAsyncLifetime
 
         // Arrange
         var page = await _browser.NewPageAsync();
-        var testHtml = Path.Combine(Path.GetTempPath(), "test-kazoocr-dragdrop.html");
+        var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-dragdrop.html");
         
         try
         {

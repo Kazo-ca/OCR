@@ -156,6 +156,12 @@ public partial class OcrController(
             }
         }, CancellationToken.None);
 
+        return AcceptedAtAction(
+            nameof(GetJob),
+            new { id = job.Id },
+            new OcrSubmitResponse(job.Id, "Job accepted and queued for processing."));
+    }
+
     private static bool IsNonFatal(Exception ex) =>
         ex is not OutOfMemoryException
         and not StackOverflowException
@@ -164,12 +170,6 @@ public partial class OcrController(
         and not BadImageFormatException
         and not CannotUnloadAppDomainException
         and not InvalidProgramException;
-
-        return AcceptedAtAction(
-            nameof(GetJob),
-            new { id = job.Id },
-            new OcrSubmitResponse(job.Id, "Job accepted and queued for processing."));
-    }
 
     /// <summary>
     /// Get all OCR jobs.

@@ -29,7 +29,7 @@ public sealed class OcrWorkerBackgroundService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         var watchPath = GetWatchPath();
-        var settings = BuildOcrSettings();
+        var settings = BuildOcrSettings(_configuration);
 
         _logger.LogInformation(
             "OcrWorkerBackgroundService starting — WatchPath={WatchPath}, Suffix={Suffix}, Languages={Languages}, Deskew={Deskew}, Clean={Clean}, Rotate={Rotate}, Optimize={Optimize}",
@@ -69,23 +69,5 @@ public sealed class OcrWorkerBackgroundService : BackgroundService
     }
 
     internal string GetWatchPath() =>
-        _configuration[EnvWatchPath]
-        ?? Environment.GetEnvironmentVariable(EnvWatchPath)
-        ?? DefaultWatchPath;
-
-    internal OcrSettings BuildOcrSettings() => new()
-    {
-        Suffix = GetConfigValue(EnvSuffix, DefaultSuffix),
-        Languages = GetConfigValue(EnvLanguages, DefaultLanguages),
-        Deskew = ParseBool(GetConfigValue(EnvDeskew, null), DefaultDeskew),
-        Clean = ParseBool(GetConfigValue(EnvClean, null), DefaultClean),
-        Rotate = ParseBool(GetConfigValue(EnvRotate, null), DefaultRotate),
-        Optimize = ParseInt(GetConfigValue(EnvOptimize, null), DefaultOptimize)
-    };
-
-    private string GetConfigValue(string key, string? defaultValue) =>
-        _configuration[key]
-        ?? Environment.GetEnvironmentVariable(key)
-        ?? defaultValue
-        ?? string.Empty;
+        GetConfigValue(_configuration, EnvWatchPath, DefaultWatchPath);
 }

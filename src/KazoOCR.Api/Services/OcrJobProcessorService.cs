@@ -83,7 +83,7 @@ public sealed class OcrJobProcessorService : BackgroundService
 
         try
         {
-            var settings = BuildOcrSettings();
+            var settings = ApiConfiguration.BuildOcrSettings(_configuration);
             var outputPath = _fileService.ComputeOutputPath(inputPath, settings.Suffix);
 
             var result = await _processRunner.RunAsync(settings, inputPath, outputPath, cancellationToken)
@@ -109,20 +109,4 @@ public sealed class OcrJobProcessorService : BackgroundService
             _logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
         }
     }
-
-    private OcrSettings BuildOcrSettings() => new()
-    {
-        Suffix = GetConfigValue(EnvSuffix, DefaultSuffix),
-        Languages = GetConfigValue(EnvLanguages, DefaultLanguages),
-        Deskew = ParseBool(GetConfigValue(EnvDeskew, null), DefaultDeskew),
-        Clean = ParseBool(GetConfigValue(EnvClean, null), DefaultClean),
-        Rotate = ParseBool(GetConfigValue(EnvRotate, null), DefaultRotate),
-        Optimize = ParseInt(GetConfigValue(EnvOptimize, null), DefaultOptimize)
-    };
-
-    private string GetConfigValue(string key, string? defaultValue) =>
-        _configuration[key]
-        ?? Environment.GetEnvironmentVariable(key)
-        ?? defaultValue
-        ?? string.Empty;
 }

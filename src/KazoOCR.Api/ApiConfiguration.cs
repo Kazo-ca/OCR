@@ -1,3 +1,5 @@
+using KazoOCR.Core;
+
 namespace KazoOCR.Api;
 
 /// <summary>
@@ -36,4 +38,26 @@ internal static class ApiConfiguration
     /// </summary>
     public static int ParseInt(string? value, int defaultValue) =>
         int.TryParse(value, out var result) ? result : defaultValue;
+
+    /// <summary>
+    /// Gets a configuration value from IConfiguration or environment variables.
+    /// </summary>
+    public static string GetConfigValue(IConfiguration configuration, string key, string? defaultValue) =>
+        configuration[key]
+        ?? Environment.GetEnvironmentVariable(key)
+        ?? defaultValue
+        ?? string.Empty;
+
+    /// <summary>
+    /// Builds OCR settings from configuration.
+    /// </summary>
+    public static OcrSettings BuildOcrSettings(IConfiguration configuration) => new()
+    {
+        Suffix = GetConfigValue(configuration, EnvSuffix, DefaultSuffix),
+        Languages = GetConfigValue(configuration, EnvLanguages, DefaultLanguages),
+        Deskew = ParseBool(GetConfigValue(configuration, EnvDeskew, null), DefaultDeskew),
+        Clean = ParseBool(GetConfigValue(configuration, EnvClean, null), DefaultClean),
+        Rotate = ParseBool(GetConfigValue(configuration, EnvRotate, null), DefaultRotate),
+        Optimize = ParseInt(GetConfigValue(configuration, EnvOptimize, null), DefaultOptimize)
+    };
 }

@@ -44,8 +44,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        // Use lock on the job object itself for atomic state transition
-        lock (job)
+        // Use the job's dedicated SyncRoot for atomic state transition
+        lock (job.SyncRoot)
         {
             if (job.Status != JobStatus.Pending)
                 return false;
@@ -61,8 +61,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        // Use lock on the job object itself for atomic state transition
-        lock (job)
+        // Use the job's dedicated SyncRoot for atomic state transition
+        lock (job.SyncRoot)
         {
             job.Status = JobStatus.Completed;
             job.OutputPath = outputPath;
@@ -77,8 +77,8 @@ public sealed class OcrJobService : IOcrJobService
         if (!_jobs.TryGetValue(id, out var job))
             return false;
 
-        // Use lock on the job object itself for atomic state transition
-        lock (job)
+        // Use the job's dedicated SyncRoot for atomic state transition
+        lock (job.SyncRoot)
         {
             job.Status = JobStatus.Failed;
             job.ErrorMessage = errorMessage;

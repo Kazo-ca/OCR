@@ -46,6 +46,11 @@ internal sealed class OcrJob
     public DateTimeOffset? CompletedAt { get; set; }
 
     /// <summary>
+    /// Gets the synchronization object for thread-safe state updates.
+    /// </summary>
+    public object SyncRoot { get; } = new();
+
+    /// <summary>
     /// Converts this job to a result record.
     /// </summary>
     /// <returns>An <see cref="OcrJobResult"/> representing this job.</returns>

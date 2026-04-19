@@ -61,15 +61,15 @@ public partial class MainPage : ContentPage
         }
         catch (InvalidOperationException ex)
         {
-            await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
+            await DisplayAlertAsync("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
         }
         catch (ArgumentException ex)
         {
-            await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
+            await DisplayAlertAsync("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
         }
         catch (IOException ex)
         {
-            await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
+            await DisplayAlertAsync("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
         }
     }
 
@@ -85,14 +85,14 @@ public partial class MainPage : ContentPage
     /// </remarks>
     /// <param name="data">The dropped data package.</param>
     /// <returns>Collection of valid PDF file paths.</returns>
-    private static async Task<IEnumerable<string>> GetDroppedFilePaths(DataPackage data)
+    private static async Task<IEnumerable<string>> GetDroppedFilePaths(DataPackageView data)
     {
         var filePaths = new List<string>();
 
         try
         {
             // Try to get text data which might contain file paths
-            var text = await data.View.GetTextAsync();
+            var text = await data.GetTextAsync();
             if (!string.IsNullOrWhiteSpace(text))
             {
                 // Split by newlines in case multiple paths are provided
@@ -142,21 +142,25 @@ public partial class MainPage : ContentPage
             var result = await FilePicker.PickMultipleAsync(options);
             if (result is not null)
             {
-                var filePaths = result.Select(f => f.FullPath).Where(p => p is not null).Cast<string>();
+                var filePaths = result
+                    .Select(f => f?.FullPath)
+                    .Where(path => !string.IsNullOrWhiteSpace(path))
+                    .Select(path => path!)
+                    .ToArray();
                 _viewModel.AddFiles(filePaths);
             }
         }
         catch (UnauthorizedAccessException ex)
         {
-            await DisplayAlert("Error", $"Access denied while selecting files: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Access denied while selecting files: {ex.Message}", "OK");
         }
         catch (InvalidOperationException ex)
         {
-            await DisplayAlert("Error", $"Failed to select files: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Failed to select files: {ex.Message}", "OK");
         }
         catch (ArgumentException ex)
         {
-            await DisplayAlert("Error", $"Invalid file selection: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Invalid file selection: {ex.Message}", "OK");
         }
     }
 
@@ -173,21 +177,24 @@ public partial class MainPage : ContentPage
             if (result is not null && result.IsSuccessful && result.Folder is not null)
             {
                 var folderPath = result.Folder.Path;
-                var pdfFiles = Directory.GetFiles(folderPath, "*.pdf", SearchOption.AllDirectories);
-                _viewModel.AddFiles(pdfFiles);
+                if (!string.IsNullOrWhiteSpace(folderPath))
+                {
+                    var pdfFiles = Directory.GetFiles(folderPath, "*.pdf", SearchOption.AllDirectories);
+                    _viewModel.AddFiles(pdfFiles);
+                }
             }
         }
         catch (UnauthorizedAccessException ex)
         {
-            await DisplayAlert("Error", $"Access denied: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Access denied: {ex.Message}", "OK");
         }
         catch (DirectoryNotFoundException ex)
         {
-            await DisplayAlert("Error", $"Directory not found: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Directory not found: {ex.Message}", "OK");
         }
         catch (IOException ex)
         {
-            await DisplayAlert("Error", $"Failed to read folder: {ex.Message}", "OK");
+            await DisplayAlertAsync("Error", $"Failed to read folder: {ex.Message}", "OK");
         }
     }
 

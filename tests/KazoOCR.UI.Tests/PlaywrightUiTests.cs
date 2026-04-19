@@ -36,7 +36,7 @@ namespace KazoOCR.UI.Tests;
 public class PlaywrightUiTests : IAsyncLifetime
 {
     private IPlaywright? _playwright;
-    private IBrowser? _browser;
+    private Microsoft.Playwright.IBrowser? _browser;
     private string? _skipReason;
 
     public async Task InitializeAsync()

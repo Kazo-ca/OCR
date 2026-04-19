@@ -57,7 +57,7 @@ jobs:
         run: dotnet restore
 
       - name: Test with coverage
-        run: dotnet test --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test --configuration Release --verbosity normal /p:BuildMAUI=${{ matrix.os == 'windows-latest' }} --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4

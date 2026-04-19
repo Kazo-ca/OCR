@@ -58,7 +58,15 @@ public partial class MainPage : ContentPage
                 }
             }
         }
-        catch (Exception ex)
+        catch (InvalidOperationException ex)
+        {
+            await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
+        }
+        catch (ArgumentException ex)
+        {
+            await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
+        }
+        catch (IOException ex)
         {
             await DisplayAlert("Drop Error", $"Failed to process dropped files: {ex.Message}", "OK");
         }
@@ -98,9 +106,13 @@ public partial class MainPage : ContentPage
                 }
             }
         }
-        catch
+        catch (InvalidOperationException ex)
         {
-            // Text extraction failed, which is fine - continue to other methods
+            System.Diagnostics.Debug.WriteLine($"Text extraction failed (invalid operation): {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Text extraction failed (access denied): {ex.Message}");
         }
 
         return filePaths;
@@ -133,9 +145,17 @@ public partial class MainPage : ContentPage
                 _viewModel.AddFiles(filePaths);
             }
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException ex)
+        {
+            await DisplayAlert("Error", $"Access denied while selecting files: {ex.Message}", "OK");
+        }
+        catch (InvalidOperationException ex)
         {
             await DisplayAlert("Error", $"Failed to select files: {ex.Message}", "OK");
+        }
+        catch (ArgumentException ex)
+        {
+            await DisplayAlert("Error", $"Invalid file selection: {ex.Message}", "OK");
         }
     }
 
@@ -156,9 +176,17 @@ public partial class MainPage : ContentPage
                 _viewModel.AddFiles(pdfFiles);
             }
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException ex)
         {
-            await DisplayAlert("Error", $"Failed to select folder: {ex.Message}", "OK");
+            await DisplayAlert("Error", $"Access denied: {ex.Message}", "OK");
+        }
+        catch (DirectoryNotFoundException ex)
+        {
+            await DisplayAlert("Error", $"Directory not found: {ex.Message}", "OK");
+        }
+        catch (IOException ex)
+        {
+            await DisplayAlert("Error", $"Failed to read folder: {ex.Message}", "OK");
         }
     }
 

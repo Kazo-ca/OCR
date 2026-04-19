@@ -1,7 +1,7 @@
 namespace KazoOCR.Api.Models;
 
 /// <summary>
-/// Represents the status of an OCR processing job.
+/// Represents the status of an OCR job.
 /// </summary>
 public enum JobStatus
 {

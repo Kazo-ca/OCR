@@ -4,7 +4,8 @@ using Microsoft.Extensions.Logging;
 namespace KazoOCR.Core;
 
 /// <summary>
-/// File system watcher service that processes new PDF files asynchronously.
+/// Watches a directory for new PDF files and processes them via OCR using an async channel queue.
+/// Uses <see cref="FileSystemWatcher"/> for file events and <see cref="Channel{T}"/> for async processing.
 /// </summary>
 public sealed class WatcherService : IWatcherService
 {
@@ -21,10 +22,13 @@ public sealed class WatcherService : IWatcherService
     /// <summary>
     /// Initializes a new instance of the <see cref="WatcherService"/> class.
     /// </summary>
-    /// <param name="fileService">The OCR file service.</param>
-    /// <param name="processRunner">The OCR process runner.</param>
+    /// <param name="fileService">The file service for path computation and validation.</param>
+    /// <param name="processRunner">The process runner for OCR execution.</param>
     /// <param name="logger">The logger instance.</param>
-    public WatcherService(IOcrFileService fileService, IOcrProcessRunner processRunner, ILogger<WatcherService> logger)
+    public WatcherService(
+        IOcrFileService fileService,
+        IOcrProcessRunner processRunner,
+        ILogger<WatcherService> logger)
     {
         _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
@@ -32,19 +36,19 @@ public sealed class WatcherService : IWatcherService
     }
 
     /// <inheritdoc />
-    public async Task WatchAsync(string inputDirectory, OcrSettings settings, CancellationToken cancellationToken)
+    public async Task WatchAsync(string watchPath, OcrSettings settings, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(inputDirectory);
+        ArgumentNullException.ThrowIfNull(watchPath);
         ArgumentNullException.ThrowIfNull(settings);
 
-        if (string.IsNullOrWhiteSpace(inputDirectory))
+        if (string.IsNullOrWhiteSpace(watchPath))
         {
-            throw new ArgumentException("Input directory cannot be empty.", nameof(inputDirectory));
+            throw new ArgumentException("Watch path cannot be empty or whitespace.", nameof(watchPath));
         }
 
-        if (!Directory.Exists(inputDirectory))
+        if (!Directory.Exists(watchPath))
         {
-            throw new DirectoryNotFoundException($"Directory not found: {inputDirectory}");
+            throw new DirectoryNotFoundException($"Watch directory does not exist: {watchPath}");
         }
 
         var channel = Channel.CreateBounded<string>(new BoundedChannelOptions(QueueCapacity)
@@ -57,7 +61,7 @@ public sealed class WatcherService : IWatcherService
         void OnCreated(object sender, FileSystemEventArgs eventArgs) => TryQueue(eventArgs.FullPath);
         void OnRenamed(object sender, RenamedEventArgs eventArgs) => TryQueue(eventArgs.FullPath);
         void OnError(object sender, ErrorEventArgs eventArgs) =>
-            _logger.LogError(eventArgs.GetException(), "File system watcher error in {Directory}", inputDirectory);
+            _logger.LogError(eventArgs.GetException(), "File system watcher error in {Directory}", watchPath);
 
         void TryQueue(string path)
         {
@@ -75,7 +79,7 @@ public sealed class WatcherService : IWatcherService
             _logger.LogWarning("Queue is full, dropping file event: {File}", path);
         }
 
-        using var watcher = new FileSystemWatcher(inputDirectory, "*")
+        using var watcher = new FileSystemWatcher(watchPath, "*")
         {
             IncludeSubdirectories = true,
             NotifyFilter = NotifyFilters.FileName | NotifyFilters.CreationTime
@@ -88,7 +92,7 @@ public sealed class WatcherService : IWatcherService
         using var registration = cancellationToken.Register(() => channel.Writer.TryComplete());
         watcher.EnableRaisingEvents = true;
 
-        _logger.LogInformation("Watching directory {Directory} for new PDF files.", inputDirectory);
+        _logger.LogInformation("Watching directory {Directory} for new PDF files.", watchPath);
 
         try
         {
@@ -99,7 +103,7 @@ public sealed class WatcherService : IWatcherService
         }
         catch (OperationCanceledException)
         {
-            _logger.LogInformation("Watcher canceled for directory {Directory}.", inputDirectory);
+            _logger.LogInformation("Watcher canceled for directory {Directory}.", watchPath);
             throw;
         }
         finally
@@ -109,7 +113,7 @@ public sealed class WatcherService : IWatcherService
             watcher.Renamed -= OnRenamed;
             watcher.Error -= OnError;
 
-            _logger.LogInformation("Stopped watching directory {Directory}.", inputDirectory);
+            _logger.LogInformation("Stopped watching directory {Directory}.", watchPath);
         }
     }
 
@@ -158,11 +162,15 @@ public sealed class WatcherService : IWatcherService
                 return;
             }
 
-            _logger.LogError("OCR failed for {File}: {Error}", filePath, result.StandardError);
+            _logger.LogWarning(
+                "OCR failed for {InputPath} (exit code {ExitCode}): {Error}",
+                filePath,
+                result.ExitCode,
+                result.StandardError);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("OCR processing canceled for {File}", filePath);
+            _logger.LogInformation("Processing cancelled for {FilePath}", filePath);
             throw;
         }
         catch (Exception ex)

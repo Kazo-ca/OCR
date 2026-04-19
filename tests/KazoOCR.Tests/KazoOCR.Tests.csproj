@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\KazoOCR.Core\KazoOCR.Core.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.CLI\KazoOCR.CLI.csproj" />
+    <ProjectReference Include="..\..\src\KazoOCR.Docker\KazoOCR.Docker.csproj" />
   </ItemGroup>
 
   <ItemGroup>

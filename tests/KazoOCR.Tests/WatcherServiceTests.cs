@@ -9,6 +9,66 @@ public class WatcherServiceTests
 {
     private const int ProcessingAttemptTimeoutMilliseconds = 500;
 
+    private readonly Mock<IOcrFileService> _fileServiceMock = new();
+    private readonly Mock<IOcrProcessRunner> _processRunnerMock = new();
+    private readonly Mock<ILogger<WatcherService>> _loggerMock = new();
+
+    private WatcherService CreateService() =>
+        new(_fileServiceMock.Object, _processRunnerMock.Object, _loggerMock.Object);
+
+    [Fact]
+    public void Constructor_WithNullFileService_ThrowsArgumentNullException()
+    {
+        var act = () => new WatcherService(null!, _processRunnerMock.Object, _loggerMock.Object);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("fileService");
+    }
+
+    [Fact]
+    public void Constructor_WithNullProcessRunner_ThrowsArgumentNullException()
+    {
+        var act = () => new WatcherService(_fileServiceMock.Object, null!, _loggerMock.Object);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("processRunner");
+    }
+
+    [Fact]
+    public void Constructor_WithNullLogger_ThrowsArgumentNullException()
+    {
+        var act = () => new WatcherService(_fileServiceMock.Object, _processRunnerMock.Object, null!);
+        act.Should().Throw<ArgumentNullException>().WithParameterName("logger");
+    }
+
+    [Fact]
+    public async Task WatchAsync_WithNullWatchPath_ThrowsArgumentNullException()
+    {
+        var service = CreateService();
+        var act = () => service.WatchAsync(null!, new OcrSettings(), CancellationToken.None);
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("watchPath");
+    }
+
+    [Fact]
+    public async Task WatchAsync_WithEmptyWatchPath_ThrowsArgumentException()
+    {
+        var service = CreateService();
+        var act = () => service.WatchAsync("  ", new OcrSettings(), CancellationToken.None);
+        await act.Should().ThrowAsync<ArgumentException>().WithParameterName("watchPath");
+    }
+
+    [Fact]
+    public async Task WatchAsync_WithNullSettings_ThrowsArgumentNullException()
+    {
+        var service = CreateService();
+        var act = () => service.WatchAsync("/some/path", null!, CancellationToken.None);
+        await act.Should().ThrowAsync<ArgumentNullException>().WithParameterName("settings");
+    }
+
+    [Fact]
+    public async Task WatchAsync_WithNonExistentDirectory_ThrowsDirectoryNotFoundException()
+    {
+        var service = CreateService();
+        var act = () => service.WatchAsync("/nonexistent/path", new OcrSettings(), CancellationToken.None);
+        await act.Should().ThrowAsync<DirectoryNotFoundException>();
+    }
+
     [Fact]
     public async Task WatchAsync_ProcessesOnlyNewPdfFiles_AndSkipsSuffixFiles()
     {

@@ -1,16 +1,16 @@
 namespace KazoOCR.Core;
 
 /// <summary>
-/// Watches a directory and processes new PDF files with OCR.
+/// Interface for folder monitoring that watches for new PDF files and processes them via OCR.
 /// </summary>
 public interface IWatcherService
 {
     /// <summary>
-    /// Starts watching a directory and processes newly created PDF files until cancellation.
+    /// Watches the specified directory for new PDF files and processes them using OCR.
     /// </summary>
-    /// <param name="inputDirectory">The directory to watch.</param>
-    /// <param name="settings">OCR settings to apply.</param>
-    /// <param name="cancellationToken">A cancellation token to stop watching.</param>
-    /// <returns>A task that completes when the watcher stops.</returns>
-    Task WatchAsync(string inputDirectory, OcrSettings settings, CancellationToken cancellationToken);
+    /// <param name="watchPath">The directory path to monitor for PDF files.</param>
+    /// <param name="settings">The OCR settings to apply when processing files.</param>
+    /// <param name="cancellationToken">A cancellation token to stop the watcher.</param>
+    /// <returns>A task that completes when the watcher is stopped.</returns>
+    Task WatchAsync(string watchPath, OcrSettings settings, CancellationToken cancellationToken);
 }

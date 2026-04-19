@@ -107,7 +107,22 @@ public sealed class OcrJobProcessorService : BackgroundService
         {
             throw;
         }
-        catch (Exception ex)
+        catch (IOException ex)
+        {
+            _jobService.MarkFailed(job.Id, ex.Message);
+            _logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _jobService.MarkFailed(job.Id, ex.Message);
+            _logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
+        }
+        catch (ArgumentException ex)
+        {
+            _jobService.MarkFailed(job.Id, ex.Message);
+            _logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
+        }
+        catch (InvalidOperationException ex)
         {
             _jobService.MarkFailed(job.Id, ex.Message);
             _logger.LogError(ex, "Job {JobId} failed with exception", job.Id);

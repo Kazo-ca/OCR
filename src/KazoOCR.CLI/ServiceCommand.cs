@@ -43,12 +43,14 @@ public sealed class ServiceCommand
     {
         if (!OperatingSystem.IsWindows())
         {
+            _logger.LogError("Windows Service installation is only supported on Windows.");
             Console.WriteLine("ERROR: Windows Service installation is only supported on Windows.");
             return (int)ExitCodes.GeneralError;
         }
 
         if (!_serviceManager.IsAdministrator())
         {
+            _logger.LogWarning("Administrator privileges required for service installation.");
             Console.WriteLine("ERROR: Administrator privileges are required to install the service.");
             Console.WriteLine("Please run this command as Administrator.");
 
@@ -70,6 +72,7 @@ public sealed class ServiceCommand
 
         if (!File.Exists(configPath))
         {
+            _logger.LogWarning("Configuration file not found: {ConfigPath}", configPath);
             Console.WriteLine($"Configuration file not found: {configPath}");
             Console.WriteLine("Creating default configuration file...");
             CreateDefaultConfigFile(configPath);
@@ -78,6 +81,7 @@ public sealed class ServiceCommand
             return (int)ExitCodes.InvalidArguments;
         }
 
+        _logger.LogInformation("Installing KazoOCR Windows Service with config: {ConfigPath}", configPath);
         Console.WriteLine($"Installing KazoOCR Windows Service...");
         Console.WriteLine($"Configuration: {configPath}");
 
@@ -85,6 +89,7 @@ public sealed class ServiceCommand
 
         if (result.ExitCode == 0)
         {
+            _logger.LogInformation("Service installed successfully.");
             Console.WriteLine();
             Console.WriteLine("✓ " + result.StandardOutput);
             Console.WriteLine();
@@ -98,6 +103,7 @@ public sealed class ServiceCommand
             return (int)ExitCodes.Success;
         }
 
+        _logger.LogError("Service installation failed: {Error}", result.StandardError);
         Console.WriteLine($"✗ Service installation failed: {result.StandardError}");
         return (int)ExitCodes.GeneralError;
     }
@@ -112,12 +118,14 @@ public sealed class ServiceCommand
     {
         if (!OperatingSystem.IsWindows())
         {
+            _logger.LogError("Windows Service uninstallation is only supported on Windows.");
             Console.WriteLine("ERROR: Windows Service uninstallation is only supported on Windows.");
             return (int)ExitCodes.GeneralError;
         }
 
         if (!_serviceManager.IsAdministrator())
         {
+            _logger.LogWarning("Administrator privileges required for service uninstallation.");
             Console.WriteLine("ERROR: Administrator privileges are required to uninstall the service.");
             Console.WriteLine("Please run this command as Administrator.");
 
@@ -134,16 +142,19 @@ public sealed class ServiceCommand
             return (int)ExitCodes.GeneralError;
         }
 
+        _logger.LogInformation("Uninstalling KazoOCR Windows Service...");
         Console.WriteLine("Uninstalling KazoOCR Windows Service...");
 
         var result = await _serviceManager.UninstallAsync(cancellationToken);
 
         if (result.ExitCode == 0)
         {
+            _logger.LogInformation("Service uninstalled successfully.");
             Console.WriteLine("✓ " + result.StandardOutput);
             return (int)ExitCodes.Success;
         }
 
+        _logger.LogError("Service uninstallation failed: {Error}", result.StandardError);
         Console.WriteLine($"✗ Service uninstallation failed: {result.StandardError}");
         return (int)ExitCodes.GeneralError;
     }
@@ -158,11 +169,13 @@ public sealed class ServiceCommand
     {
         if (!OperatingSystem.IsWindows())
         {
+            _logger.LogInformation("Service status check requested on non-Windows platform.");
             Console.WriteLine("Windows Service status is only applicable on Windows.");
             Console.WriteLine("On Linux/macOS, consider using Docker or running the watch command directly.");
             return (int)ExitCodes.Success;
         }
 
+        _logger.LogDebug("Querying service status...");
         var status = await _serviceManager.GetStatusAsync(cancellationToken);
 
         Console.WriteLine("=== KazoOCR Service Status ===");
@@ -175,6 +188,10 @@ public sealed class ServiceCommand
         {
             Console.WriteLine($"State:         {status.State}");
             Console.WriteLine($"Start Type:    {status.StartType}");
+        }
+        else
+        {
+            Console.WriteLine($"State:         {status.State}");
         }
 
         return (int)ExitCodes.Success;

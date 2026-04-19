@@ -49,11 +49,12 @@ public sealed partial class ServiceManager : IServiceManager
         }
 
         // Build the binary path with --service flag and config path
+        // Note: sc.exe expects binPath= value without extra outer quotes
         var binPath = $"\"{exePath}\" --service --config \"{configPath}\"";
 
         // Use sc.exe create to register the service
         var createResult = await RunScCommandAsync(
-            $"create {ServiceName} binPath= \"{binPath}\" start= auto DisplayName= \"{DefaultDisplayName}\"",
+            $"create {ServiceName} binPath= {binPath} start= auto DisplayName= \"{DefaultDisplayName}\"",
             cancellationToken);
 
         if (createResult.ExitCode != 0)
@@ -69,10 +70,19 @@ public sealed partial class ServiceManager : IServiceManager
         // Start the service
         var startResult = await RunScCommandAsync($"start {ServiceName}", cancellationToken);
 
-        // Return success if service was created, even if start failed
-        var message = $"Service '{ServiceName}' installed successfully."
-            + (startResult.ExitCode != 0 ? $" Note: Service start returned: {startResult.StandardError}" : " Service started.");
-        return ProcessResult.Success(message);
+        // Return failure if start failed (service was created but couldn't start)
+        if (startResult.ExitCode != 0)
+        {
+            var errorMessage = !string.IsNullOrWhiteSpace(startResult.StandardError)
+                ? startResult.StandardError
+                : startResult.StandardOutput;
+            return ProcessResult.Failure(
+                startResult.ExitCode,
+                $"Service '{ServiceName}' was installed but failed to start: {errorMessage}",
+                $"Service '{ServiceName}' installed successfully.");
+        }
+
+        return ProcessResult.Success($"Service '{ServiceName}' installed and started successfully.");
     }
 
     /// <inheritdoc />
@@ -114,7 +124,21 @@ public sealed partial class ServiceManager : IServiceManager
 
         if (result.ExitCode != 0)
         {
-            // Service doesn't exist or access denied
+            // Distinguish between "service not found" and "access denied"
+            var output = result.StandardOutput + result.StandardError;
+
+            // SC error 5 = Access denied, error 1060 = Service does not exist
+            if (output.Contains("Access is denied", StringComparison.OrdinalIgnoreCase) ||
+                output.Contains("error 5", StringComparison.OrdinalIgnoreCase))
+            {
+                return new ServiceStatus
+                {
+                    ServiceName = ServiceName,
+                    IsInstalled = false,
+                    State = "Access denied (run as Administrator)"
+                };
+            }
+
             return new ServiceStatus
             {
                 ServiceName = ServiceName,

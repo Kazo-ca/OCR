@@ -46,7 +46,7 @@ public sealed class MultiWatcherBackgroundService : BackgroundService
 
         _logger.LogInformation("Configured to watch {Count} folder(s).", watchFolders.Count);
 
-        // Validate all folders exist
+        // Validate all folders exist and have valid settings
         var validFolders = new List<WatchFolderConfig>();
         foreach (var folder in watchFolders)
         {
@@ -62,13 +62,23 @@ public sealed class MultiWatcherBackgroundService : BackgroundService
                 continue;
             }
 
+            // Validate Optimize range (0-3) to prevent runtime exceptions
+            if (folder.Optimize < 0 || folder.Optimize > 3)
+            {
+                _logger.LogWarning(
+                    "Skipping folder {Path}: Invalid Optimize value {Optimize}. Must be between 0 and 3.",
+                    folder.Path,
+                    folder.Optimize);
+                continue;
+            }
+
             validFolders.Add(folder);
             _logger.LogInformation("Will watch folder: {Path}", folder.Path);
         }
 
         if (validFolders.Count == 0)
         {
-            _logger.LogError("No valid watch folders found. Please ensure the configured paths exist.");
+            _logger.LogError("No valid watch folders found. Please ensure the configured paths exist and have valid settings.");
             return;
         }
 

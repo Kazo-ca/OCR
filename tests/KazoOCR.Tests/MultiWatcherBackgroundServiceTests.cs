@@ -163,4 +163,80 @@ public class MultiWatcherBackgroundServiceTests
             Directory.Delete(tempDir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task ExecuteAsync_WithInvalidOptimizeValue_SkipsFolder()
+    {
+        var tempDir = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var config = new Dictionary<string, string?>
+            {
+                ["WatchFolders:0:Path"] = tempDir,
+                ["WatchFolders:0:Suffix"] = "_test",
+                ["WatchFolders:0:Optimize"] = "5" // Invalid: must be 0-3
+            };
+
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(config)
+                .Build();
+
+            using var service = new MultiWatcherBackgroundService(configuration, _watcherServiceMock.Object, _loggerMock.Object);
+            using var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
+
+            await service.StartAsync(cts.Token);
+            await Task.Delay(50, CancellationToken.None);
+            await service.StopAsync(CancellationToken.None);
+
+            // Should not start watcher for folder with invalid Optimize value
+            _watcherServiceMock.Verify(
+                x => x.WatchAsync(It.IsAny<string>(), It.IsAny<OcrSettings>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task ExecuteAsync_WithNegativeOptimizeValue_SkipsFolder()
+    {
+        var tempDir = Path.Join(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var config = new Dictionary<string, string?>
+            {
+                ["WatchFolders:0:Path"] = tempDir,
+                ["WatchFolders:0:Suffix"] = "_test",
+                ["WatchFolders:0:Optimize"] = "-1" // Invalid: must be 0-3
+            };
+
+            var configuration = new ConfigurationBuilder()
+                .AddInMemoryCollection(config)
+                .Build();
+
+            using var service = new MultiWatcherBackgroundService(configuration, _watcherServiceMock.Object, _loggerMock.Object);
+            using var cts = new CancellationTokenSource();
+            cts.CancelAfter(TimeSpan.FromMilliseconds(100));
+
+            await service.StartAsync(cts.Token);
+            await Task.Delay(50, CancellationToken.None);
+            await service.StopAsync(CancellationToken.None);
+
+            // Should not start watcher for folder with invalid Optimize value
+            _watcherServiceMock.Verify(
+                x => x.WatchAsync(It.IsAny<string>(), It.IsAny<OcrSettings>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+        finally
+        {
+            Directory.Delete(tempDir, recursive: true);
+        }
+    }
 }

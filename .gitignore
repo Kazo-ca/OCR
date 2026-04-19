@@ -55,3 +55,6 @@ nunit-*.xml
 
 # Project template
 CopilotProjectTemplate/
+
+# Local-only notes
+*.localonly.md

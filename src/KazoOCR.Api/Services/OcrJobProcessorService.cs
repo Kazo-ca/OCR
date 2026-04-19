@@ -103,6 +103,10 @@ public sealed class OcrJobProcessorService : BackgroundService
                 _logger.LogError("Job {JobId} failed with exit code {ExitCode}", job.Id, result.ExitCode);
             }
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             _jobService.MarkFailed(job.Id, ex.Message);

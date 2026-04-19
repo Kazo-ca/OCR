@@ -1,8 +1,8 @@
 using System.Reflection;
-using System.Text.Json;
+using KazoOCR.Api.Middleware;
 using KazoOCR.Api.Services;
 using KazoOCR.Core;
-using Microsoft.OpenApi.Models;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -20,13 +20,16 @@ if (args.Length >= 2 && args[0] == "--generate-openapi")
     return;
 }
 
+// Add configuration from environment variables
+builder.Configuration.AddEnvironmentVariables("KAZO_");
+
 ConfigureServices(builder);
 
 var app = builder.Build();
 
 ConfigureApp(app);
 
-var port = Environment.GetEnvironmentVariable("KAZO_API_PORT") ?? "5000";
+var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
 app.Urls.Add($"http://*:{port}");
 
 app.Run();
@@ -41,71 +44,36 @@ void ConfigureServices(WebApplicationBuilder webAppBuilder)
     webAppBuilder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
     webAppBuilder.Services.AddSingleton<IWatcherService, WatcherService>();
 
-    // Register API services
+    // Register Auth service
+    webAppBuilder.Services.AddSingleton<IAuthService, AuthService>();
+
+    // Register API services (JobStore)
     webAppBuilder.Services.AddSingleton<IJobStore, InMemoryJobStore>();
 
-    // Register background worker
-    webAppBuilder.Services.AddHostedService<OcrWorkerBackgroundService>();
+// Register Core services
+builder.Services.AddSingleton<IOcrFileService, OcrFileService>();
+builder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
+builder.Services.AddSingleton<IWatcherService, WatcherService>();
 
-    // Add Swagger / OpenAPI
-    webAppBuilder.Services.AddEndpointsApiExplorer();
-    webAppBuilder.Services.AddSwaggerGen(options =>
-    {
-        options.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = "KazoOCR API",
-            Version = "v1",
-            Description = "REST API for KazoOCR - PDF OCR processing service that creates searchable PDF 'sandwiches' using OCRmyPDF.",
-            Contact = new OpenApiContact
-            {
-                Name = "KazoOCR",
-                Url = new Uri("https://github.com/Kazo-ca/OCR")
-            },
-            License = new OpenApiLicense
-            {
-                Name = "MIT",
-                Url = new Uri("https://opensource.org/licenses/MIT")
-            }
-        });
+// Register API services
+builder.Services.AddSingleton<OcrJobService>();
+builder.Services.AddSingleton<IOcrJobService>(sp => sp.GetRequiredService<OcrJobService>());
 
-        // Add X-Api-Key security definition
-        options.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
-        {
-            Type = SecuritySchemeType.ApiKey,
-            In = ParameterLocation.Header,
-            Name = "X-Api-Key",
-            Description = "API key for authentication. Set KAZO_API_KEY environment variable to enable."
-        });
+// Register background services
+builder.Services.AddHostedService<OcrJobProcessorService>();
+builder.Services.AddHostedService<OcrWorkerBackgroundService>();
 
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "ApiKey"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
+// Add health checks
+builder.Services.AddHealthChecks();
 
-        // Enable annotations
-        options.EnableAnnotations();
+var app = builder.Build();
 
-        // Include XML comments
-        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        if (File.Exists(xmlPath))
-        {
-            options.IncludeXmlComments(xmlPath);
-        }
-    });
-}
+// Configure the HTTP request pipeline
+const string openApiRoutePattern = "/openapi/{documentName}.json";
+const string apiReferenceRoutePrefix = "/docs";
 
-void ConfigureApp(WebApplication webApp)
+app.MapOpenApi(openApiRoutePattern);
+app.MapScalarApiReference(apiReferenceRoutePrefix, options =>
 {
     // Enable Swagger UI
     webApp.UseSwagger();
@@ -115,22 +83,23 @@ void ConfigureApp(WebApplication webApp)
         options.RoutePrefix = "swagger";
     });
 
+    // API Key middleware (only enforced if KAZO_API_KEY is set)
+    webApp.UseApiKeyAuthentication();
+
+    webApp.UseAuthorization();
+
     webApp.MapControllers();
 }
+    options.WithOpenApiRoutePattern(openApiRoutePattern);
+});
 
-async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)
+app.MapControllers();
+app.MapHealthChecks("/health");
+
+app.Run();
+
+// Make Program accessible for WebApplicationFactory in tests
+namespace KazoOCR.Api
 {
-    // Get the OpenAPI document from Swashbuckle
-    var swaggerProvider = webApp.Services.GetRequiredService<Swashbuckle.AspNetCore.Swagger.ISwaggerProvider>();
-    var swagger = swaggerProvider.GetSwagger("v1");
-
-    // Serialize using the OpenAPI library's writer
-    await using var stream = File.Create(outputPath);
-    await using var writer = new StreamWriter(stream);
-    var openApiWriter = new Microsoft.OpenApi.Writers.OpenApiJsonWriter(writer);
-    swagger.SerializeAsV3(openApiWriter);
-    Console.WriteLine($"OpenAPI specification written to: {outputPath}");
+    public partial class Program { }
 }
-
-// Make Program accessible for testing with WebApplicationFactory
-public partial class Program { }

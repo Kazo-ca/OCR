@@ -82,7 +82,10 @@ public partial class OcrController(
         logger.LogInformation("Created job {JobId} for file {FileName}", job.Id, file.FileName);
 
         // Save the file temporarily and process in background
-        var tempPath = Path.Combine(Path.GetTempPath(), $"{job.Id}{extension}");
+        // Use application-specific temp directory to avoid conflicts
+        var tempDir = Path.Combine(Path.GetTempPath(), "KazoOCR");
+        Directory.CreateDirectory(tempDir);
+        var tempPath = Path.Combine(tempDir, $"{job.Id}{extension}");
         await using (var stream = new FileStream(tempPath, FileMode.Create))
         {
             await file.CopyToAsync(stream, cancellationToken);
@@ -124,7 +127,9 @@ public partial class OcrController(
             }
             catch (Exception ex)
             {
-                jobStore.UpdateJob(job.Id, JobStatus.Failed, errorMessage: ex.Message);
+                // Don't expose internal exception details to users - use a generic message
+                // The full exception is logged below for debugging
+                jobStore.UpdateJob(job.Id, JobStatus.Failed, errorMessage: "An internal error occurred during processing.");
                 logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
             }
             finally
@@ -225,7 +230,8 @@ public partial class OcrController(
             return NotFound(new ErrorResponse("Job not found", $"No job found with ID: {SanitizeForLogging(id)}"));
         }
 
-        logger.LogInformation("Job {JobId} removed", id);
+        // Since id is validated above, it's safe to log directly, but we use sanitized version for defense in depth
+        logger.LogInformation("Job {JobId} removed", SanitizeForLogging(id));
         return NoContent();
     }
 }

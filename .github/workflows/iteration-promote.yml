@@ -51,12 +51,12 @@ jobs:
                       }
                     }
                   }
-                  field(name: "Status") {
+                  statusField: field(name: "Status") {
                     ... on ProjectV2SingleSelectField {
                       options { id name }
                     }
                   }
-                  field(name: "Iteration") {
+                  iterationField: field(name: "Iteration") {
                     ... on ProjectV2IterationField {
                       configuration {
                         iterations { id title startDate duration }
@@ -72,7 +72,7 @@ jobs:
 
             // --- 2. Parse status options ---
             const statusOptions = {};
-            for (const opt of project.field.options || []) {
+            for (const opt of project.statusField?.options || []) {
               statusOptions[opt.name] = opt.id;
             }
             const BACKLOG_ID = statusOptions["Backlog"];
@@ -87,7 +87,7 @@ jobs:
             const iterQuery = `query($projectId: ID!) {
               node(id: $projectId) {
                 ... on ProjectV2 {
-                  field(name: "Iteration") {
+                  iterationField: field(name: "Iteration") {
                     ... on ProjectV2IterationField {
                       configuration {
                         iterations { id title startDate duration }
@@ -98,8 +98,8 @@ jobs:
               }
             }`;
             const iterResult = await github.graphql(iterQuery, { projectId: PROJECT_ID });
-            const iterations = iterResult.node.field.configuration.iterations
-              .sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+            const iterations = iterResult.node.iterationField?.configuration?.iterations || [];
+            iterations.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
 
             core.info(`Found ${iterations.length} iterations: ${iterations.map(i => i.title).join(", ")}`);
 

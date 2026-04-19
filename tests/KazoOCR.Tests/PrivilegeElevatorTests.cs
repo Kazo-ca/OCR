@@ -4,6 +4,18 @@ using KazoOCR.Core;
 
 public class PrivilegeElevatorTests
 {
+    private static bool ShouldRunWindowsElevationTests()
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return true;
+        }
+
+        var runElevationTests = Environment.GetEnvironmentVariable("RUN_WINDOWS_ELEVATION_TESTS");
+        return string.Equals(runElevationTests, "true", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(runElevationTests, "1", StringComparison.OrdinalIgnoreCase);
+    }
+
     #region IsElevated Tests
 
     [Fact]
@@ -79,6 +91,11 @@ public class PrivilegeElevatorTests
     [Fact]
     public async Task RelaunchElevatedAsync_WithEmptyArgs_DoesNotThrow()
     {
+        if (!ShouldRunWindowsElevationTests())
+        {
+            return;
+        }
+
         // Arrange
         var elevator = new PrivilegeElevator();
         var args = Array.Empty<string>();
@@ -115,6 +132,11 @@ public class PrivilegeElevatorTests
     [Fact]
     public async Task RelaunchElevatedAsync_WithCancellationToken_DoesNotThrow()
     {
+        if (!ShouldRunWindowsElevationTests())
+        {
+            return;
+        }
+
         // Arrange
         var elevator = new PrivilegeElevator();
         var args = new[] { "test" };

@@ -1,5 +1,7 @@
 using FluentAssertions;
 using Microsoft.Playwright;
+using System.ComponentModel;
+using System.Diagnostics;
 
 namespace KazoOCR.UI.Tests;
 
@@ -37,52 +39,28 @@ public class PlaywrightUiTests : IAsyncLifetime
 {
     private IPlaywright? _playwright;
     private Microsoft.Playwright.IBrowser? _browser;
-    private string? _skipReason;
 
     public async Task InitializeAsync()
     {
-        var runPlaywrightUiTests = Environment.GetEnvironmentVariable("RUN_PLAYWRIGHT_UI_TESTS");
-        var isEnabled =
-            string.Equals(runPlaywrightUiTests, "true", StringComparison.OrdinalIgnoreCase) ||
-            string.Equals(runPlaywrightUiTests, "1", StringComparison.OrdinalIgnoreCase);
-
-        if (!isEnabled)
-        {
-            _skipReason = "Playwright UI tests are disabled by default. Set RUN_PLAYWRIGHT_UI_TESTS=true to enable them.";
-            return;
-        }
-
         try
         {
-            _playwright = await Playwright.CreateAsync();
-            _browser = await _playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+            await LaunchBrowserAsync();
+        }
+        catch (Exception firstException) when (firstException is PlaywrightException || firstException is TimeoutException || firstException is OperationCanceledException)
+        {
+            _playwright?.Dispose();
+            _playwright = null;
+            _browser = null;
+
+            var installWorked = await TryInstallPlaywrightBrowsersAsync();
+            if (!installWorked)
             {
-                Headless = true
-            });
-        }
-        catch (PlaywrightException ex)
-        {
-            _playwright?.Dispose();
-            _playwright = null;
-            _browser = null;
+                throw new InvalidOperationException(
+                    "Playwright browser launch failed and automatic browser installation could not be completed.",
+                    firstException);
+            }
 
-            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
-        }
-        catch (TimeoutException ex)
-        {
-            _playwright?.Dispose();
-            _playwright = null;
-            _browser = null;
-
-            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
-        }
-        catch (OperationCanceledException ex)
-        {
-            _playwright?.Dispose();
-            _playwright = null;
-            _browser = null;
-
-            _skipReason = $"Playwright browser launch failed. Ensure Playwright browsers are installed (e.g. 'playwright install'). Original error: {ex.Message}";
+            await LaunchBrowserAsync();
         }
     }
 
@@ -95,9 +73,68 @@ public class PlaywrightUiTests : IAsyncLifetime
         _playwright?.Dispose();
     }
 
-    private static void SkipIfNotAvailable(string? skipReason)
+    private async Task LaunchBrowserAsync()
     {
-        Skip.If(skipReason is not null, skipReason ?? string.Empty);
+        var playwright = await Playwright.CreateAsync();
+        var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
+        {
+            Headless = true
+        });
+
+        _playwright = playwright ?? throw new InvalidOperationException("Playwright initialization returned null.");
+        _browser = browser ?? throw new InvalidOperationException("Chromium browser initialization returned null.");
+    }
+
+    private static async Task<bool> TryInstallPlaywrightBrowsersAsync()
+    {
+        var scriptPath = Path.Combine(AppContext.BaseDirectory, "playwright.ps1");
+        if (!File.Exists(scriptPath))
+        {
+            return false;
+        }
+
+        var candidates = OperatingSystem.IsWindows()
+            ? new[] { "pwsh", "powershell" }
+            : new[] { "pwsh" };
+
+        foreach (var shell in candidates)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = shell,
+                ArgumentList =
+                {
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    scriptPath,
+                    "install",
+                    "chromium"
+                },
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            try
+            {
+                using var process = new Process { StartInfo = startInfo };
+                process.Start();
+                await process.WaitForExitAsync();
+                if (process.ExitCode == 0)
+                {
+                    return true;
+                }
+            }
+            catch (Win32Exception)
+            {
+                // Try the next available shell candidate.
+            }
+        }
+
+        return false;
     }
 
     private static string ToFileUri(string filePath)
@@ -113,8 +150,6 @@ public class PlaywrightUiTests : IAsyncLifetime
     [Trait("Category", "Smoke")]
     public async Task Playwright_CanLaunchBrowser()
     {
-        SkipIfNotAvailable(_skipReason);
-
         // Arrange & Act
         _browser.Should().NotBeNull("Playwright browser should be initialized");
 
@@ -134,8 +169,6 @@ public class PlaywrightUiTests : IAsyncLifetime
     [Trait("Category", "Documentation")]
     public async Task Playwright_CanNavigateToLocalFile()
     {
-        SkipIfNotAvailable(_skipReason);
-
         // Arrange
         var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr.html");
@@ -184,8 +217,6 @@ public class PlaywrightUiTests : IAsyncLifetime
     [Trait("Category", "Forms")]
     public async Task Playwright_CanInteractWithForms()
     {
-        SkipIfNotAvailable(_skipReason);
-
         // Arrange
         var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-form.html");
@@ -251,8 +282,6 @@ public class PlaywrightUiTests : IAsyncLifetime
     [Trait("Category", "DragDrop")]
     public async Task Playwright_CanTestDragAndDropPattern()
     {
-        SkipIfNotAvailable(_skipReason);
-
         // Arrange
         var page = await _browser!.NewPageAsync();
         var testHtml = Path.Join(Path.GetTempPath(), "test-kazoocr-dragdrop.html");

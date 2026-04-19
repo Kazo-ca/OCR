@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using KazoOCR.Api.Models;
 using KazoOCR.Api.Services;
 using KazoOCR.Core;
@@ -12,13 +13,37 @@ namespace KazoOCR.Api.Controllers;
 [ApiController]
 [Route("api/ocr")]
 [Produces("application/json")]
-public class OcrController(
+public partial class OcrController(
     IJobStore jobStore,
     IOcrFileService fileService,
     IOcrProcessRunner processRunner,
     ILogger<OcrController> logger) : ControllerBase
 {
     private static readonly string[] AllowedExtensions = [".pdf"];
+
+    // Regex to validate job ID format (alphanumeric only, 32 chars for GUID without dashes)
+    [GeneratedRegex(@"^[a-zA-Z0-9]{1,64}$")]
+    private static partial Regex JobIdRegex();
+
+    /// <summary>
+    /// Sanitizes a job ID for safe logging to prevent log forging attacks.
+    /// </summary>
+    private static string SanitizeForLogging(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "[empty]";
+        }
+
+        // Remove or replace control characters and newlines
+        return value.Replace("\r", "").Replace("\n", " ").Replace("\t", " ");
+    }
+
+    /// <summary>
+    /// Validates that the job ID matches expected format.
+    /// </summary>
+    private static bool IsValidJobId(string? id) =>
+        !string.IsNullOrEmpty(id) && JobIdRegex().IsMatch(id);
 
     /// <summary>
     /// Submit a PDF file for OCR processing.
@@ -91,14 +116,32 @@ public class OcrController(
                 }
                 else
                 {
-                    jobStore.UpdateJob(job.Id, JobStatus.Failed, errorMessage: result.StandardError);
-                    logger.LogWarning("Job {JobId} failed: {Error}", job.Id, result.StandardError);
+                    // Sanitize error message for logging to prevent log forging
+                    var sanitizedError = result.StandardError?.Replace("\r", "").Replace("\n", " ") ?? "Unknown error";
+                    jobStore.UpdateJob(job.Id, JobStatus.Failed, errorMessage: sanitizedError);
+                    logger.LogWarning("Job {JobId} failed with exit code {ExitCode}", job.Id, result.ExitCode);
                 }
             }
             catch (Exception ex)
             {
                 jobStore.UpdateJob(job.Id, JobStatus.Failed, errorMessage: ex.Message);
                 logger.LogError(ex, "Job {JobId} failed with exception", job.Id);
+            }
+            finally
+            {
+                // Clean up temporary input file
+                try
+                {
+                    if (System.IO.File.Exists(tempPath))
+                    {
+                        System.IO.File.Delete(tempPath);
+                        logger.LogDebug("Cleaned up temporary file for job {JobId}", job.Id);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogWarning(ex, "Failed to clean up temporary file for job {JobId}", job.Id);
+                }
             }
         }, CancellationToken.None);
 
@@ -129,19 +172,26 @@ public class OcrController(
     /// <param name="id">The job identifier.</param>
     /// <returns>The job details with current status.</returns>
     /// <response code="200">Returns the job details.</response>
+    /// <response code="400">Invalid job ID format.</response>
     /// <response code="404">Job not found.</response>
     [HttpGet("jobs/{id}")]
     [SwaggerOperation(
         Summary = "Get OCR job status",
         Description = "Returns the current status and details of a specific OCR job.")]
     [ProducesResponseType(typeof(OcrJobResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public IActionResult GetJob(string id)
     {
+        if (!IsValidJobId(id))
+        {
+            return BadRequest(new ErrorResponse("Invalid job ID format"));
+        }
+
         var job = jobStore.GetJob(id);
         if (job is null)
         {
-            return NotFound(new ErrorResponse("Job not found", $"No job found with ID: {id}"));
+            return NotFound(new ErrorResponse("Job not found", $"No job found with ID: {SanitizeForLogging(id)}"));
         }
 
         return Ok(job);
@@ -153,19 +203,26 @@ public class OcrController(
     /// <param name="id">The job identifier.</param>
     /// <returns>No content on success.</returns>
     /// <response code="204">Job successfully removed.</response>
+    /// <response code="400">Invalid job ID format.</response>
     /// <response code="404">Job not found.</response>
     [HttpDelete("jobs/{id}")]
     [SwaggerOperation(
         Summary = "Cancel or remove an OCR job",
         Description = "Removes a job from the queue. If the job is currently processing, it will be cancelled.")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     public IActionResult DeleteJob(string id)
     {
+        if (!IsValidJobId(id))
+        {
+            return BadRequest(new ErrorResponse("Invalid job ID format"));
+        }
+
         var removed = jobStore.RemoveJob(id);
         if (!removed)
         {
-            return NotFound(new ErrorResponse("Job not found", $"No job found with ID: {id}"));
+            return NotFound(new ErrorResponse("Job not found", $"No job found with ID: {SanitizeForLogging(id)}"));
         }
 
         logger.LogInformation("Job {JobId} removed", id);

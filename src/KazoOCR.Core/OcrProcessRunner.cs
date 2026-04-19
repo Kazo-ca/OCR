@@ -137,6 +137,7 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     /// <param name="settings">The OCR settings.</param>
     /// <returns>The command-line arguments string.</returns>
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <see cref="OcrSettings.Optimize"/> is outside the valid range (0-3).</exception>
+    /// <exception cref="ArgumentException">Thrown when <see cref="OcrSettings.Languages"/> contains invalid characters.</exception>
     internal static string BuildOcrArguments(OcrSettings settings)
     {
         ArgumentNullException.ThrowIfNull(settings);
@@ -147,6 +148,16 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
                 nameof(settings),
                 settings.Optimize,
                 "Optimize level must be between 0 and 3.");
+        }
+
+        // Validate Languages to prevent command injection
+        // Languages should only contain letters, numbers, underscores, and plus signs (e.g., "fra+eng")
+        if (!string.IsNullOrWhiteSpace(settings.Languages) &&
+            !IsValidLanguageCode(settings.Languages))
+        {
+            throw new ArgumentException(
+                "Languages must contain only letters, numbers, underscores, and plus signs.",
+                nameof(settings));
         }
 
         var args = new List<string>();
@@ -174,6 +185,25 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
         }
 
         return string.Join(" ", args);
+    }
+
+    /// <summary>
+    /// Validates that a language code string contains only safe characters.
+    /// Valid characters: a-z, A-Z, 0-9, underscore, plus sign.
+    /// </summary>
+    /// <param name="languages">The language code string to validate.</param>
+    /// <returns>True if valid, false otherwise.</returns>
+    internal static bool IsValidLanguageCode(string languages)
+    {
+        foreach (var c in languages)
+        {
+            if (!char.IsLetterOrDigit(c) && c != '_' && c != '+')
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

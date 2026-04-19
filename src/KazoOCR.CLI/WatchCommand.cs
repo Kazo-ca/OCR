@@ -83,15 +83,13 @@ public sealed class WatchCommand
             linkedCts.Cancel();
         };
 
-        PosixSignalRegistration? sigTermRegistration = null;
-        if (!OperatingSystem.IsWindows())
-        {
-            sigTermRegistration = PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
+        using PosixSignalRegistration? sigTermRegistration = !OperatingSystem.IsWindows()
+            ? PosixSignalRegistration.Create(PosixSignal.SIGTERM, context =>
             {
                 context.Cancel = true;
                 linkedCts.Cancel();
-            });
-        }
+            })
+            : null;
 
         Console.CancelKeyPress += cancelHandler;
 
@@ -113,7 +111,6 @@ public sealed class WatchCommand
         finally
         {
             Console.CancelKeyPress -= cancelHandler;
-            sigTermRegistration?.Dispose();
         }
     }
 }

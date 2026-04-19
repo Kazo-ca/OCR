@@ -1,6 +1,0 @@
-@KazoOCR.Api_HostAddress = http://localhost:5262
-
-GET {{KazoOCR.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###

@@ -398,18 +398,7 @@ public class MainPageViewModelTests
     [Fact]
     public void IsNotProcessing_UpdatesWhenIsProcessingChanges()
     {
-        // Arrange
-        var isNotProcessingChangedRaised = false;
-        _viewModel.PropertyChanged += (_, args) =>
-        {
-            if (args.PropertyName == nameof(_viewModel.IsNotProcessing))
-            {
-                isNotProcessingChangedRaised = true;
-            }
-        };
-
-        // Act - We need to simulate IsProcessing change through ProcessFilesAsync
-        // Since we can't directly set IsProcessing, we verify the relationship
+        // Verify the relationship between IsProcessing and IsNotProcessing.
         _viewModel.IsProcessing.Should().BeFalse();
         _viewModel.IsNotProcessing.Should().BeTrue();
     }

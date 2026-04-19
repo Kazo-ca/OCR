@@ -7,8 +7,9 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(BuildMAUI)' == 'true'">
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFrameworks>net10.0-windows10.0.19041.0</TargetFrameworks>
     <OutputType>WinExe</OutputType>
+    <WindowsPackageType>None</WindowsPackageType>
     <UseMaui>true</UseMaui>
     <SingleProject>true</SingleProject>
     <EnableDefaultMauiItems>true</EnableDefaultMauiItems>
@@ -33,7 +34,9 @@
 
   <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
-    <PackageReference Include="CommunityToolkit.Maui" Version="11.1.0" />
+    <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.41" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
+    <PackageReference Include="CommunityToolkit.Maui" Version="14.1.0" />
   </ItemGroup>
 
 </Project>

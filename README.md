@@ -1,6 +1,7 @@
 # KazoOCR
 
 [![CI](https://github.com/Kazo-ca/OCR/actions/workflows/pr-check.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/pr-check.yml)
+[![Promote Next Iteration](https://github.com/Kazo-ca/OCR/actions/workflows/iteration-promote.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/iteration-promote.yml)
 [![Release](https://github.com/Kazo-ca/OCR/actions/workflows/auto-release.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/auto-release.yml)
 [![Docker](https://github.com/Kazo-ca/OCR/actions/workflows/dockerhub.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/dockerhub.yml)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)

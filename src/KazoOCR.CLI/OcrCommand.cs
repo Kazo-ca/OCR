@@ -17,6 +17,9 @@ public class RootCommand
 
     [Subcommand]
     public KazoOcrCommands? Environment { get; set; }
+
+    [Subcommand]
+    public ServiceCommand? Service { get; set; }
 }
 
 /// <summary>

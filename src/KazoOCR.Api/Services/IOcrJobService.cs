@@ -63,4 +63,11 @@ public interface IOcrJobService
     /// </summary>
     /// <returns>The next pending job, or null if none available.</returns>
     OcrJobResult? GetNextPendingJob();
+
+    /// <summary>
+    /// Gets the input path for a job (for use by the worker).
+    /// </summary>
+    /// <param name="id">The job identifier.</param>
+    /// <returns>The input path, or null if not found.</returns>
+    string? GetJobInputPath(string id);
 }

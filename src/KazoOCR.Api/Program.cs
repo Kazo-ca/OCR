@@ -35,8 +35,14 @@ builder.Services.AddHealthChecks();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-app.MapOpenApi();
-app.MapScalarApiReference();
+const string openApiRoutePattern = "/openapi/{documentName}.json";
+const string apiReferenceRoutePrefix = "/docs";
+
+app.MapOpenApi(openApiRoutePattern);
+app.MapScalarApiReference(apiReferenceRoutePrefix, options =>
+{
+    options.WithOpenApiRoutePattern(openApiRoutePattern);
+});
 
 app.MapControllers();
 app.MapHealthChecks("/health");

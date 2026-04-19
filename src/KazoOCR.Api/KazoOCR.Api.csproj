@@ -11,10 +11,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <InternalsVisibleTo Include="KazoOCR.Tests" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
   </ItemGroup>
 

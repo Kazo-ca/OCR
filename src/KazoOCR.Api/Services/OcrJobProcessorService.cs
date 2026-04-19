@@ -9,7 +9,7 @@ namespace KazoOCR.Api.Services;
 /// </summary>
 public sealed class OcrJobProcessorService : BackgroundService
 {
-    private readonly OcrJobService _jobService;
+    private readonly IOcrJobService _jobService;
     private readonly IOcrFileService _fileService;
     private readonly IOcrProcessRunner _processRunner;
     private readonly ILogger<OcrJobProcessorService> _logger;
@@ -19,7 +19,7 @@ public sealed class OcrJobProcessorService : BackgroundService
     /// Initializes a new instance of the <see cref="OcrJobProcessorService"/> class.
     /// </summary>
     public OcrJobProcessorService(
-        OcrJobService jobService,
+        IOcrJobService jobService,
         IOcrFileService fileService,
         IOcrProcessRunner processRunner,
         ILogger<OcrJobProcessorService> logger,

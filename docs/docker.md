@@ -4,45 +4,36 @@
 
 ## Overview
 
-`KazoOCR.Docker` is a Worker Service designed to run in a Docker container. It uses the Core library's `WatcherService` to monitor a mounted volume for PDF files.
+`KazoOCR.Docker` is currently a minimal Worker Service template designed to run in a Docker container.
+At this stage it starts correctly and writes heartbeat logs; folder watching/OCR processing wiring is not enabled yet.
 
 ## Quick Start
 
 ```bash
 # Using docker-compose
-docker-compose -f docker/docker-compose.yml up
+docker compose up --build
 
 # Or build and run manually
 docker build -t kazoocr:latest -f docker/Dockerfile .
-docker run -v /path/to/pdfs:/data kazoocr:latest
+docker run --rm kazoocr:latest
 ```
 
-## Environment Variables
+## Current Behavior
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `KAZO_WATCH_PATH` | Path to watch for PDFs | `/data` |
-| `KAZO_SUFFIX` | Output file suffix | `_OCR` |
-| `KAZO_LANGUAGES` | Tesseract language codes | `fra+eng` |
-| `KAZO_DESKEW` | Enable deskew correction | `false` |
-| `KAZO_CLEAN` | Enable Unpaper cleaning | `false` |
-| `KAZO_ROTATE` | Enable orientation correction | `false` |
-| `KAZO_OPTIMIZE` | Compression level (0-3) | `1` |
+- The container starts the worker process.
+- The worker currently emits periodic log lines.
+- `KAZO_*` configuration variables are reserved for upcoming worker/Core integration.
 
 ## Docker Compose
 
 ```yaml
-version: '3.8'
 services:
   kazoocr:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     volumes:
-      - /path/to/pdfs:/data
-    environment:
-      - KAZO_WATCH_PATH=/data
-      - KAZO_LANGUAGES=fra+eng
+      - ./watch:/watch
     restart: unless-stopped
 ```
 
@@ -50,14 +41,14 @@ services:
 
 The Dockerfile uses a multi-stage build:
 1. **Build stage**: .NET SDK for compilation
-2. **Runtime stage**: .NET runtime + OCRmyPDF + Tesseract
+2. **Runtime stage**: .NET runtime + OCRmyPDF + Tesseract (`fra` and `eng`) + non-root execution user
 
 ## Volumes
 
-Mount your PDF folder to `/data` in the container:
+You can mount a folder to `/watch` now so the compose/runtime paths are ready for upcoming watch-mode wiring:
 
 ```bash
-docker run -v /home/user/documents:/data kazoocr:latest
+docker run -v /home/user/documents:/watch kazoocr:latest
 ```
 
 ## Logs

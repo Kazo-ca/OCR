@@ -79,12 +79,15 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 | `iteration-2` | `#1D76DB` | CLI & Environnement |
 | `iteration-3` | `#D93F0B` | Watch, Docker & Distribution |
 | `iteration-4` | `#7057FF` | Service Windows & UI MAUI |
+| `iteration-5` | `#E4B429` | Web API & Web UI |
 | `ci-cd` | `#FBCA04` | Workflows GitHub Actions |
 | `documentation` | `#C5DEF5` | Documentation |
 | `core` | `#B60205` | KazoOCR.Core |
 | `cli` | `#5319E7` | KazoOCR.CLI |
 | `docker` | `#006B75` | Docker |
 | `service` | `#0075CA` | Service Windows |
+| `api` | `#0052CC` | KazoOCR.Api |
+| `web` | `#00B4D8` | KazoOCR.Web |
 | `ui` | `#F9D0C4` | KazoOCR.UI |
 | `tests` | `#E99695` | KazoOCR.Tests |
 
@@ -488,11 +491,222 @@ KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
 | 3.3 | Dockerfile multi-stage | `iteration-3`, `docker`, `ci-cd` | 3 |
 | 4.1 | CLI : Installation en Service Windows | `iteration-4`, `cli`, `service` | 4 |
 | 4.2 | UI MAUI : Vue Drag & Drop | `iteration-4`, `ui` | 4 |
+| 5.1 | Web API : Projet KazoOCR.Api | `iteration-5`, `api` | 5 |
+| 5.2 | Web API : Swagger / OpenAPI | `iteration-5`, `api`, `documentation` | 5 |
+| 5.3 | Web API : Authentication (API Key + Password) | `iteration-5`, `api` | 5 |
+| 5.4 | Web UI : Projet KazoOCR.Web (Blazor) | `iteration-5`, `web` | 5 |
+| 5.5 | Web UI : First-run wizard (password creation) | `iteration-5`, `web` | 5 |
+| 5.6 | Docker : Reconfiguration multi-service | `iteration-5`, `docker` | 5 |
+| 5.7 | Tests : Integration tests Web API & Web UI | `iteration-5`, `tests` | 5 |
+| 5.8 | Documentation : docs/api.md + docs/web.md | `iteration-5`, `documentation` | 5 |
 | CI.1 | Workflow PR Check | `ci-cd` | 1 |
 | CI.2 | Workflow Auto-Release | `ci-cd` | 2 |
 | CI.3 | Workflow DockerHub | `ci-cd` | 3 |
 
-**Total : 16 issues — ~8h de travail estimé**
+**Total : 24 issues — ~12h de travail estimé**
+
+---
+
+### Itération 5 — Web API & Web UI
+
+> **Objectif :** Exposer KazoOCR via une API REST documentée et une interface web Blazor hébergées dans le conteneur Docker.
+
+#### Issue 5.1 — Web API : Projet KazoOCR.Api
+- **Labels :** `iteration-5`, `api`
+- **Estimation :** 45 min
+- **Référence :** See [project.md §KazoOCR.Api](../project.md#kazoocrapiasp-net-core-web-api--iteration-5) for component details and environment variables.
+- **Description :**
+  - Créer `src/KazoOCR.Api/` — ASP.NET Core Web API (`net10.0`)
+  - Ajouter `ProjectReference` vers `KazoOCR.Core`
+  - Ajouter `KazoOCR.Api` à `KazoOCR.sln`
+  - Enregistrer les services Core via DI (IOcrFileService, IOcrProcessRunner, WatcherService)
+  - Embarquer un `BackgroundService` (`OcrWorkerBackgroundService`) qui exécute `WatcherService`
+  - Endpoints REST :
+    | Method | Route | Description |
+    |--------|-------|-------------|
+    | POST | `/api/ocr/process` | Submit a PDF for OCR (multipart/form-data) |
+    | GET | `/api/ocr/jobs` | List all jobs with status |
+    | GET | `/api/ocr/jobs/{id}` | Get status/result of a specific job |
+    | DELETE | `/api/ocr/jobs/{id}` | Cancel / remove a job |
+    | GET | `/health` | Health check endpoint |
+  - Configuration via `appsettings.json` + environment variables :
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `KAZO_API_PORT` | `5000` | HTTP port |
+    | `KAZO_WATCH_PATH` | `/data` | Folder watched by embedded worker |
+    | `KAZO_SUFFIX` | `_OCR` | Output file suffix |
+    | `KAZO_LANGUAGES` | `fra+eng` | Tesseract language codes |
+- **Critères d'acceptation :**
+  - [ ] `dotnet run` démarre le serveur sur le port configuré
+  - [ ] `POST /api/ocr/process` accepte un PDF et retourne un `jobId`
+  - [ ] `GET /api/ocr/jobs/{id}` retourne le statut avec `Pending`, `Processing`, `Completed`, `Failed`
+  - [ ] Le worker en arrière-plan surveille `KAZO_WATCH_PATH`
+
+#### Issue 5.2 — Web API : Swagger / OpenAPI
+- **Labels :** `iteration-5`, `api`, `documentation`
+- **Estimation :** 30 min
+- **Référence :** See [project.md §KazoOCR.Api](../project.md#kazoocrapiasp-net-core-web-api--iteration-5) for Swagger package details.
+- **Description :**
+  - Ajouter `Swashbuckle.AspNetCore` au projet `KazoOCR.Api`
+  - Configurer Swagger UI à `/swagger`
+  - Documenter tous les endpoints avec `[ProducesResponseType]`, `[SwaggerOperation]`, schémas XML
+  - Activer la génération du fichier `openapi.json` dans le build Release
+  - Configurer Swagger pour inclure l'en-tête `X-Api-Key` dans le SecurityDefinition
+- **Critères d'acceptation :**
+  - [ ] `http://localhost:5000/swagger` affiche l'UI Swagger complète
+  - [ ] Tous les endpoints sont documentés avec exemples de réponse
+  - [ ] Le fichier `openapi.json` est généré dans `wwwroot`
+
+#### Issue 5.3 — Web API : Authentication (API Key + Password)
+- **Labels :** `iteration-5`, `api`
+- **Estimation :** 45 min
+- **Référence :** See [project.md §KazoOCR.Api](../project.md#kazoocrapiasp-net-core-web-api--iteration-5) for authentication configuration details.
+- **Description :**
+  - **API Key** :
+    - Si `KAZO_API_KEY` est défini, tous les appels API doivent inclure `X-Api-Key: <value>`
+    - Retourner `401 Unauthorized` si la clé est absente ou incorrecte
+    - Si `KAZO_API_KEY` est vide/absent → pas d'authentification (mode ouvert)
+    - Implémenter via un `IAuthorizationFilter` ou middleware ASP.NET Core
+  - **Password (Web UI)** :
+    - Si `KAZO_DEFAULT_PASSWORD` est défini → utilisé comme mot de passe administrateur
+    - Si `KAZO_DEFAULT_PASSWORD` est vide/absent → première connexion déclenche le wizard de création de mot de passe
+    - Stocker le hash du mot de passe dans un fichier `data/auth.json` (bcrypt)
+    - Endpoint `POST /api/auth/login` → retourne un JWT ou cookie de session
+    - Endpoint `POST /api/auth/setup` → disponible uniquement si aucun mot de passe n'est configuré
+  - Ne jamais stocker de mots de passe en clair
+- **Critères d'acceptation :**
+  - [ ] Sans `KAZO_API_KEY` → API accessible sans en-tête
+  - [ ] Avec `KAZO_API_KEY` → `401` si header absent ou incorrect
+  - [ ] Sans `KAZO_DEFAULT_PASSWORD` → `POST /api/auth/setup` accessible, wizard déclenché
+  - [ ] Avec `KAZO_DEFAULT_PASSWORD` → wizard désactivé, connexion directe
+  - [ ] Mots de passe hashés (bcrypt, salt unique)
+
+#### Issue 5.4 — Web UI : Projet KazoOCR.Web (Blazor)
+- **Labels :** `iteration-5`, `web`
+- **Estimation :** 60 min
+- **Référence :** See [project.md §KazoOCR.Web](../project.md#kazoocr-web-blazor-web-app--iteration-5) for component details and port configuration.
+- **Description :**
+  - Créer `src/KazoOCR.Web/` — Blazor Web App (`net10.0`)
+  - Ajouter `KazoOCR.Web` à `KazoOCR.sln`
+  - Configurer un `HttpClient` typé pointant vers `KazoOCR.Api` (URL via `KAZO_API_BASE_URL`)
+  - Pages Blazor :
+    | Page | Route | Description |
+    |------|-------|-------------|
+    | `Dashboard` | `/` | Job list with live status polling |
+    | `Upload` | `/upload` | Drag-and-drop PDF upload + OCR options |
+    | `Settings` | `/settings` | OCR defaults, watch path, suffix |
+    | `Login` | `/login` | Authentication form |
+    | `Setup` | `/setup` | First-run password wizard |
+  - Configuration :
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `KAZO_WEB_PORT` | `5001` | HTTP port for the Blazor app |
+    | `KAZO_API_BASE_URL` | `http://api:5000` | Internal URL of KazoOCR.Api |
+  - Responsive layout using Bootstrap (included with Blazor template)
+  - No external JavaScript framework — pure Blazor components
+- **Critères d'acceptation :**
+  - [ ] `http://localhost:5001` affiche le dashboard
+  - [ ] Upload d'un PDF via drag-and-drop déclenche un job via l'API
+  - [ ] Le dashboard se met à jour automatiquement (polling ou SignalR)
+  - [ ] La page Settings permet de modifier les options OCR par défaut
+
+#### Issue 5.5 — Web UI : First-run wizard (password creation)
+- **Labels :** `iteration-5`, `web`
+- **Estimation :** 30 min
+- **Référence :** See [project.md §KazoOCR.Api](../project.md#kazoocrapiasp-net-core-web-api--iteration-5) for first-run password behavior.
+- **Description :**
+  - Détecter l'état "non configuré" via `GET /api/auth/status` → retourne `{ "configured": false }`
+  - Si non configuré → rediriger automatiquement vers `/setup` depuis le middleware Blazor
+  - Page `/setup` :
+    - Formulaire : nouveau mot de passe + confirmation
+    - Validation côté client (longueur ≥ 8, complexité)
+    - Appel `POST /api/auth/setup` → stocke le hash
+    - Après succès → redirection vers `/login`
+  - La page `/setup` est inaccessible si un mot de passe est déjà configuré (retourne 404 via l'API)
+- **Critères d'acceptation :**
+  - [ ] Premier démarrage sans `KAZO_DEFAULT_PASSWORD` → redirection automatique vers `/setup`
+  - [ ] `/setup` inaccessible si déjà configuré
+  - [ ] Validation du formulaire (complexité, confirmation)
+  - [ ] Après setup → connexion fonctionnelle
+
+#### Issue 5.6 — Docker : Reconfiguration multi-service
+- **Labels :** `iteration-5`, `docker`
+- **Estimation :** 45 min
+- **Référence :** See [project.md §KazoOCR.Docker](../project.md#kazoocrdocker-worker-service) for Docker reconfiguration scope.
+- **Description :**
+  - Mettre à jour `docker/Dockerfile` pour un build multi-stage incluant `KazoOCR.Api` et `KazoOCR.Web` :
+    - Stage build : compile les deux projets
+    - Stage runtime api : `mcr.microsoft.com/dotnet/aspnet:10.0` + ocrmypdf + KazoOCR.Api
+    - Stage runtime web : `mcr.microsoft.com/dotnet/aspnet:10.0` + KazoOCR.Web
+  - Mettre à jour `docker/docker-compose.yml` avec 3 services :
+    ```yaml
+    services:
+      worker:          # KazoOCR.Docker (watch-only mode, legacy)
+      api:             # KazoOCR.Api (REST API + embedded worker)
+        ports: ["${KAZO_API_PORT:-5000}:5000"]
+      web:             # KazoOCR.Web (Blazor UI)
+        ports: ["${KAZO_WEB_PORT:-5001}:5001"]
+    volumes:
+      data:            # Shared volume for PDF processing
+      auth:            # Volume for auth.json persistence
+    ```
+  - Exposer les ports via variables d'environnement (`KAZO_API_PORT`, `KAZO_WEB_PORT`)
+  - Le `worker` service est optionnel (peut être désactivé si `api` est utilisé — il embarque son propre worker)
+  - Mettre à jour `docs/docker.md`
+- **Critères d'acceptation :**
+  - [ ] `docker-compose up` démarre les 3 services
+  - [ ] `http://localhost:5000/swagger` accessible depuis l'hôte
+  - [ ] `http://localhost:5001` accessible depuis l'hôte
+  - [ ] Les ports sont configurables via variables d'environnement
+  - [ ] Le volume `auth` persiste les données d'authentification entre les redémarrages
+
+#### Issue 5.7 — Tests : Integration tests Web API & Web UI
+- **Labels :** `iteration-5`, `tests`
+- **Estimation :** 60 min
+- **Référence :** See [project.md §KazoOCR.Tests](../project.md#kazoocrtests-xunit) for testing conventions.
+- **Description :**
+  - Ajouter `ProjectReference` vers `KazoOCR.Api` et `KazoOCR.Web` dans `KazoOCR.Tests`
+  - Ajouter `Microsoft.AspNetCore.Mvc.Testing` au projet tests
+  - Tests d'intégration pour `KazoOCR.Api` :
+    - `POST /api/ocr/process` sans API key → `200` si non configuré, `401` si configuré
+    - `POST /api/ocr/process` avec mauvaise clé → `401`
+    - `POST /api/ocr/process` avec PDF valide + bonne clé → `202 Accepted` + jobId
+    - `GET /api/ocr/jobs/{id}` avec id inconnu → `404`
+    - `GET /health` → `200`
+    - `POST /api/auth/setup` si déjà configuré → `409 Conflict`
+    - Swagger endpoint `/swagger/v1/swagger.json` → `200` avec contenu JSON valide
+  - Tests d'intégration pour `KazoOCR.Web` :
+    - `GET /` sans auth → redirection vers `/login`
+    - `GET /setup` si configuré → `404` ou redirection
+    - `GET /upload` après login → `200`
+  - Utiliser `WebApplicationFactory<Program>` avec mocks des services Core
+- **Critères d'acceptation :**
+  - [ ] Couverture > 80% sur KazoOCR.Api
+  - [ ] Tous les scénarios d'authentification couverts
+  - [ ] Tests passent sur Ubuntu et Windows (CI matrix)
+
+#### Issue 5.8 — Documentation : docs/api.md + docs/web.md
+- **Labels :** `iteration-5`, `documentation`
+- **Estimation :** 30 min
+- **Référence :** See [project.md §Itérations](../project.md#itérations) for iteration 5 scope summary.
+- **Description :**
+  - Créer `docs/api.md` :
+    - Overview de l'API REST
+    - Table des endpoints avec exemples curl
+    - Configuration (env vars, ports, auth)
+    - Lien vers Swagger UI
+  - Créer `docs/web.md` :
+    - Description de l'interface Blazor
+    - Captures d'écran / wireframes ASCII
+    - Configuration (ports, API URL)
+    - Procédure first-run
+  - Mettre à jour `docs/architecture.md` pour inclure KazoOCR.Api et KazoOCR.Web
+  - Mettre à jour `docs/docker.md` pour documenter le nouveau docker-compose multi-service
+  - Mettre à jour `README.md` pour ajouter le quickstart Web (`http://localhost:5001`)
+- **Critères d'acceptation :**
+  - [ ] `docs/api.md` complet avec exemples
+  - [ ] `docs/web.md` complet avec procédure first-run
+  - [ ] README mis à jour avec accès Web UI
 
 ---
 

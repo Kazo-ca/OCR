@@ -1,6 +1,7 @@
 # KazoOCR
 
 [![CI](https://github.com/Kazo-ca/OCR/actions/workflows/pr-check.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/pr-check.yml)
+[![Promote Next Iteration](https://github.com/Kazo-ca/OCR/actions/workflows/iteration-promote.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/iteration-promote.yml)
 [![Release](https://github.com/Kazo-ca/OCR/actions/workflows/auto-release.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/auto-release.yml)
 [![Docker](https://github.com/Kazo-ca/OCR/actions/workflows/dockerhub.yml/badge.svg)](https://github.com/Kazo-ca/OCR/actions/workflows/dockerhub.yml)
 [![.NET 10](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
@@ -47,12 +48,15 @@ kazoocr install
 
 ### Docker
 
+Current Docker worker image starts successfully and emits service logs.
+Watch-folder OCR processing in the container is still being wired in the worker project.
+
 ```bash
 # Using docker-compose
-docker-compose -f docker/docker-compose.yml up
+docker compose up --build
 
 # Or directly with docker run
-docker run -v /path/to/pdfs:/data kazoocr:latest
+docker run --rm kazoocr:latest
 ```
 
 ### MAUI (Windows Desktop)
@@ -97,9 +101,9 @@ KazoOCR.sln
 │   └── KazoOCR.UI/        # MAUI Desktop application
 ├── tests/
 │   └── KazoOCR.Tests/     # xUnit tests
+├── docker-compose.yml
 ├── docker/
 │   ├── Dockerfile
-│   └── docker-compose.yml
 └── docs/                  # Documentation
 ```
 

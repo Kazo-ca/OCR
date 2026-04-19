@@ -1,0 +1,8 @@
+services:
+  kazoocr:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    volumes:
+      - ./watch:/watch
+    restart: unless-stopped

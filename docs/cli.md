@@ -38,13 +38,23 @@ kazoocr install
 
 ### service
 
-Manage Windows Service installation.
+Manage Windows Service installation (Windows only).
 
 ```bash
+# Install the Windows Service
 kazoocr service install
+
+# Install with custom configuration path
+kazoocr service install --config "C:\MyConfig\service.json"
+
+# Uninstall the Windows Service
 kazoocr service uninstall
+
+# Check service status
 kazoocr service status
 ```
+
+The service commands require Administrator privileges. See [Service Documentation](service.md) for details.
 
 ## Options
 
@@ -53,9 +63,9 @@ kazoocr service status
 | `--input` | `-i` | Source file or folder | *required* |
 | `--suffix` | `-s` | Suffix for output file | `_OCR` |
 | `--languages` | `-l` | Tesseract language codes | `fra+eng` |
-| `--deskew` | | Enable deskew correction | `false` |
+| `--deskew` | | Enable deskew correction | `true` |
 | `--clean` | | Enable Unpaper cleaning | `false` |
-| `--rotate` | | Enable orientation correction | `false` |
+| `--rotate` | | Enable orientation correction | `true` |
 | `--optimize` | | Compression level (0-3) | `1` |
 
 ## Exit Codes
@@ -74,6 +84,7 @@ The CLI can be configured via:
 - Command-line arguments
 - Environment variables
 - Configuration file (`appsettings.json`)
+- Service configuration (`appsettings.service.json`) for Windows Service mode
 
 ## Examples
 
@@ -86,6 +97,12 @@ kazoocr ocr -i document.pdf -l "fra+deu"
 
 # Process with all corrections enabled
 kazoocr ocr -i document.pdf --deskew --clean --rotate
+
+# Watch a folder continuously
+kazoocr watch -i /path/to/folder/ --clean
+
+# Install Windows Service with custom config
+kazoocr service install --config "D:\Config\kazoocr.json"
 ```
 
 ## Related Documentation

@@ -1,0 +1,42 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- UI tests only run on Windows where MAUI can be built -->
+  <PropertyGroup>
+    <BuildMAUI Condition="'$(BuildMAUI)' == '' AND '$([MSBuild]::IsOSPlatform(Windows))' == 'true'">true</BuildMAUI>
+    <BuildMAUI Condition="'$(BuildMAUI)' == ''">false</BuildMAUI>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <TargetFramework Condition="'$(BuildMAUI)' == 'true'">net10.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework Condition="'$(BuildMAUI)' != 'true'">net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(BuildMAUI)' == 'true'">
+    <DefineConstants>$(DefineConstants);BUILD_MAUI</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.4" PrivateAssets="all" />
+    <PackageReference Include="FluentAssertions" Version="8.2.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="Microsoft.Playwright" Version="1.52.0" />
+    <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\KazoOCR.Core\KazoOCR.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
+    <ProjectReference Include="..\..\src\KazoOCR.UI\KazoOCR.UI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

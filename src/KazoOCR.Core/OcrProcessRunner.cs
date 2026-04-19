@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -195,15 +196,7 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
     /// <returns>True if valid, false otherwise.</returns>
     internal static bool IsValidLanguageCode(string languages)
     {
-        foreach (var c in languages)
-        {
-            if (!char.IsLetterOrDigit(c) && c != '_' && c != '+')
-            {
-                return false;
-            }
-        }
-
-        return true;
+        return languages.All(c => char.IsLetterOrDigit(c) || c == '_' || c == '+');
     }
 
     /// <summary>

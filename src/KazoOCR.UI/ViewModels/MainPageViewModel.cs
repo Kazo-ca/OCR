@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using KazoOCR.Core;
 
@@ -145,15 +146,13 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     /// <param name="filePaths">The file paths to add.</param>
     public void AddFiles(IEnumerable<string> filePaths)
     {
-        foreach (var filePath in filePaths)
+        foreach (var filePath in filePaths.Where(filePath =>
+                     !string.IsNullOrWhiteSpace(filePath) &&
+                     filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) &&
+                     !PendingFiles.Contains(filePath)))
         {
-            if (!string.IsNullOrWhiteSpace(filePath) &&
-                filePath.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) &&
-                !PendingFiles.Contains(filePath))
-            {
-                PendingFiles.Add(filePath);
-                AddLog($"Added: {Path.GetFileName(filePath)}");
-            }
+            PendingFiles.Add(filePath);
+            AddLog($"Added: {Path.GetFileName(filePath)}");
         }
 
         UpdateStatusMessage();

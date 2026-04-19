@@ -45,10 +45,19 @@ public class ServiceCommandTests
     [Fact]
     public async Task Status_OnNonWindows_ReturnsSuccessWithMessage()
     {
-        // Status should always succeed, showing a message on non-Windows
+        // On non-Windows, Status returns early with Success before calling GetStatusAsync
+        // On Windows, it will call GetStatusAsync, so we need to set it up
+        _serviceManagerMock.Setup(x => x.GetStatusAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ServiceStatus
+            {
+                ServiceName = "KazoOCR",
+                IsInstalled = false,
+                State = "Not installed"
+            });
+
         var result = await _command.Status();
 
-        // On non-Windows, it returns Success with a message
+        // Status should always return Success regardless of platform
         result.Should().Be((int)ExitCodes.Success);
     }
 

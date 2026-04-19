@@ -47,12 +47,15 @@ kazoocr install
 
 ### Docker
 
+Current Docker worker image starts successfully and emits service logs.
+Watch-folder OCR processing in the container is still being wired in the worker project.
+
 ```bash
 # Using docker-compose
 docker compose up --build
 
 # Or directly with docker run
-docker run -v /path/to/pdfs:/watch kazoocr:latest
+docker run --rm kazoocr:latest
 ```
 
 ### MAUI (Windows Desktop)

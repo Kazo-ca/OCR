@@ -324,7 +324,8 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
 
     private void AddLog(string message)
     {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
+        // Using local time for user-facing log display
+        var timestamp = DateTimeOffset.Now.ToString("HH:mm:ss");
         LogMessages.Add($"[{timestamp}] {message}");
     }
 

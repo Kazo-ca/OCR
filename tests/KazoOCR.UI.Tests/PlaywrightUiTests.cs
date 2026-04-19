@@ -6,17 +6,31 @@ namespace KazoOCR.UI.Tests;
 /// <summary>
 /// Playwright-based UI automation tests for KazoOCR.
 /// 
-/// Note: MAUI Windows Desktop applications are native Win32 applications.
-/// Playwright is primarily designed for web browser automation.
+/// <para>
+/// <b>Important:</b> These tests demonstrate browser automation patterns but do NOT
+/// test the actual MAUI desktop application. MAUI Windows Desktop applications are
+/// native Win32 applications that require platform-specific UI automation tools.
+/// </para>
 /// 
-/// For MAUI desktop UI testing, consider:
-/// 1. WinAppDriver with Appium for Windows UI Automation
-/// 2. Microsoft UI Automation (UIA) directly
-/// 3. FlaUI library for Windows UI Automation
+/// <para>
+/// <b>Purpose of these tests:</b>
+/// <list type="bullet">
+/// <item>Validate Playwright infrastructure setup for future web UI (KazoOCR.Web)</item>
+/// <item>Demonstrate UI interaction patterns (forms, drag-drop) applicable to web interfaces</item>
+/// <item>Provide test scaffolding that can be extended when Blazor Hybrid is added</item>
+/// </list>
+/// </para>
 /// 
-/// These tests demonstrate the Playwright setup and can be extended
-/// if a web interface is added (e.g., Blazor Hybrid) or for testing
-/// any web-based documentation/help system.
+/// <para>
+/// <b>For actual MAUI desktop UI testing, consider:</b>
+/// <list type="bullet">
+/// <item>WinAppDriver with Appium for Windows UI Automation</item>
+/// <item>Microsoft UI Automation (UIA) directly via FlaUI library</item>
+/// <item>Xamarin.UITest or similar MAUI-compatible test frameworks</item>
+/// </list>
+/// These tools can interact with native Windows controls and would be appropriate
+/// for testing the MAUI application's drag &amp; drop, file selection, and OCR processing.
+/// </para>
 /// </summary>
 [Trait("Category", "UIAutomation")]
 public class PlaywrightUiTests : IAsyncLifetime

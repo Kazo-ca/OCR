@@ -64,6 +64,18 @@ public partial class MainPage : ContentPage
         }
     }
 
+    /// <summary>
+    /// Extracts file paths from dropped data.
+    /// </summary>
+    /// <remarks>
+    /// Note: This implementation attempts to extract file paths from text data only.
+    /// MAUI's DataPackage API for native file drops (StorageItems) may not be fully
+    /// available or consistent across all Windows versions. For full native drag &amp; drop
+    /// support, consider using platform-specific code or awaiting MAUI API improvements.
+    /// The FilePicker buttons provide a reliable alternative for file selection.
+    /// </remarks>
+    /// <param name="data">The dropped data package.</param>
+    /// <returns>Collection of valid PDF file paths.</returns>
     private static async Task<IEnumerable<string>> GetDroppedFilePaths(DataPackage data)
     {
         var filePaths = new List<string>();

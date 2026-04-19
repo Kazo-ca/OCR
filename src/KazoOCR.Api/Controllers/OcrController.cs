@@ -85,7 +85,8 @@ public partial class OcrController(
         // Use application-specific temp directory to avoid conflicts
         var tempDir = Path.Join(Path.GetTempPath(), "KazoOCR");
         Directory.CreateDirectory(tempDir);
-        var tempPath = Path.Combine(tempDir, $"{job.Id}{extension}");
+        var tempFileName = Path.GetFileName($"{job.Id}{extension}");
+        var tempPath = Path.Combine(tempDir, tempFileName);
         await using (var stream = new FileStream(tempPath, FileMode.Create))
         {
             await file.CopyToAsync(stream, cancellationToken);

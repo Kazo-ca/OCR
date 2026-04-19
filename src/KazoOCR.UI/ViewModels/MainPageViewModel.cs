@@ -44,7 +44,7 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     public string Suffix
     {
         get => _suffix;
-        set => SetProperty(ref _suffix, value);
+        set => SetProperty(ref _suffix, value ?? "_OCR");
     }
 
     /// <summary>
@@ -53,7 +53,7 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     public string Languages
     {
         get => _languages;
-        set => SetProperty(ref _languages, value);
+        set => SetProperty(ref _languages, value ?? "fra+eng");
     }
 
     /// <summary>

@@ -1,0 +1,104 @@
+@page "/login"
+@layout AuthLayout
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Login - KazoOCR</PageTitle>
+
+<h5 class="text-center mb-4">Sign In</h5>
+
+@if (_errorMessage != null)
+{
+    <div class="alert alert-danger">
+        @_errorMessage
+    </div>
+}
+
+<EditForm Model="_loginModel" OnValidSubmit="HandleLogin">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Password</label>
+        <InputText type="password" @bind-Value="_loginModel.Password" class="form-control"
+                   placeholder="Enter your password" autofocus />
+        <ValidationMessage For="@(() => _loginModel.Password)" />
+    </div>
+
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary" disabled="@_loading">
+            @if (_loading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            Sign In
+        </button>
+    </div>
+</EditForm>
+
+<div class="mt-4 text-center">
+    <small class="text-muted">
+        KazoOCR Web Interface
+    </small>
+</div>
+
+@code {
+    private readonly LoginModel _loginModel = new();
+    private bool _loading;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if already authenticated
+        var status = await AuthState.RefreshStatusAsync();
+
+        if (!status.Configured)
+        {
+            // First-run: redirect to setup
+            Navigation.NavigateTo("/setup", forceLoad: true);
+            return;
+        }
+
+        if (status.Authenticated)
+        {
+            // Already authenticated: redirect to dashboard
+            Navigation.NavigateTo("/", forceLoad: true);
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var success = await AuthState.LoginAsync(_loginModel.Password);
+            if (success)
+            {
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = "Invalid password. Please try again.";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Login failed: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Login request timed out. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class LoginModel
+    {
+        public string Password { get; set; } = string.Empty;
+    }
+}

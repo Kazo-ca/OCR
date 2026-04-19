@@ -1,0 +1,152 @@
+@page "/setup"
+@layout AuthLayout
+@inject AuthStateService AuthState
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Setup - KazoOCR</PageTitle>
+
+<h5 class="text-center mb-4">First-Time Setup</h5>
+
+<p class="text-center text-muted mb-4">
+    Welcome to KazoOCR! Please create a password to secure your web interface.
+</p>
+
+@if (_errorMessage != null)
+{
+    <div class="alert alert-danger">
+        @_errorMessage
+    </div>
+}
+
+<EditForm Model="_setupModel" OnValidSubmit="HandleSetup">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">New Password</label>
+        <InputText type="password" @bind-Value="_setupModel.Password" class="form-control"
+                   placeholder="Enter a secure password" autofocus />
+        <ValidationMessage For="@(() => _setupModel.Password)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Confirm Password</label>
+        <InputText type="password" @bind-Value="_setupModel.ConfirmPassword" class="form-control"
+                   placeholder="Confirm your password" />
+        <ValidationMessage For="@(() => _setupModel.ConfirmPassword)" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(_setupModel.Password) && !string.IsNullOrEmpty(_setupModel.ConfirmPassword))
+    {
+        @if (_setupModel.Password != _setupModel.ConfirmPassword)
+        {
+            <div class="alert alert-warning small">
+                Passwords do not match.
+            </div>
+        }
+        else if (_setupModel.Password.Length < 8)
+        {
+            <div class="alert alert-warning small">
+                Password should be at least 8 characters.
+            </div>
+        }
+        else
+        {
+            <div class="alert alert-success small">
+                <i class="bi bi-check-circle"></i> Passwords match.
+            </div>
+        }
+    }
+
+    <div class="d-grid">
+        <button type="submit" class="btn btn-primary" disabled="@(_loading || !IsFormValid)">
+            @if (_loading)
+            {
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+            }
+            Create Password
+        </button>
+    </div>
+</EditForm>
+
+<div class="mt-4 text-center">
+    <small class="text-muted">
+        This password will be required to access the KazoOCR web interface.
+    </small>
+</div>
+
+@code {
+    private readonly SetupModel _setupModel = new();
+    private bool _loading;
+    private string? _errorMessage;
+
+    private bool IsFormValid =>
+        !string.IsNullOrEmpty(_setupModel.Password) &&
+        _setupModel.Password.Length >= 8 &&
+        _setupModel.Password == _setupModel.ConfirmPassword;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if already configured
+        var status = await AuthState.RefreshStatusAsync();
+
+        if (status.Configured)
+        {
+            // Already configured: redirect to login or dashboard
+            if (status.Authenticated)
+            {
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+        }
+    }
+
+    private async Task HandleSetup()
+    {
+        if (!IsFormValid)
+        {
+            _errorMessage = "Please fill in all fields correctly.";
+            return;
+        }
+
+        _loading = true;
+        _errorMessage = null;
+
+        try
+        {
+            var success = await AuthState.SetupPasswordAsync(
+                _setupModel.Password,
+                _setupModel.ConfirmPassword);
+
+            if (success)
+            {
+                Navigation.NavigateTo("/", forceLoad: true);
+            }
+            else
+            {
+                _errorMessage = "Setup failed. Please try again.";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Setup failed: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Setup request timed out. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private sealed class SetupModel
+    {
+        public string Password { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}

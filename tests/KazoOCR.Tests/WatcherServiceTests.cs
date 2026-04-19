@@ -7,6 +7,8 @@ using Moq;
 
 public class WatcherServiceTests
 {
+    private const int ProcessingAttemptTimeoutMilliseconds = 500;
+
     [Fact]
     public async Task WatchAsync_ProcessesOnlyNewPdfFiles_AndSkipsSuffixFiles()
     {
@@ -65,7 +67,7 @@ public class WatcherServiceTests
                 await File.WriteAllTextAsync(targetPdf, "pdf", cts.Token);
                 try
                 {
-                    (await processedSignal.Task.WaitAsync(TimeSpan.FromMilliseconds(500), cts.Token)).Should().BeTrue();
+                    (await processedSignal.Task.WaitAsync(TimeSpan.FromMilliseconds(ProcessingAttemptTimeoutMilliseconds), cts.Token)).Should().BeTrue();
                     return;
                 }
                 catch (TimeoutException) when (attempt < maxAttempts - 1)
@@ -74,17 +76,13 @@ public class WatcherServiceTests
                 }
             }
 
-            (await processedSignal.Task.WaitAsync(TimeSpan.FromSeconds(1), cts.Token)).Should().BeTrue();
+            throw new Xunit.Sdk.XunitException("Watcher did not process the target PDF within the retry window.");
         }
 
         async Task AssertNoAdditionalProcessingAsync(int expectedInvocationCount)
         {
-            var deadline = DateTime.UtcNow.AddSeconds(1);
-            while (DateTime.UtcNow < deadline)
-            {
-                processRunnerMock.Invocations.Count.Should().Be(expectedInvocationCount);
-                await Task.Delay(50, cts.Token);
-            }
+            await Task.Delay(TimeSpan.FromSeconds(1), cts.Token);
+            processRunnerMock.Invocations.Count.Should().Be(expectedInvocationCount);
         }
 
         try

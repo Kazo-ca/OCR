@@ -8,6 +8,8 @@ namespace KazoOCR.Core;
 /// </summary>
 public sealed class WatcherService : IWatcherService
 {
+    // Allows short event bursts while keeping memory usage bounded.
+    // Increase only if sustained high-volume folder drops are expected.
     private const int QueueCapacity = 1024;
     private const int ValidationRetryDelayMilliseconds = 200;
     private const int ValidationRetryMaxAttempts = 3;
@@ -187,7 +189,11 @@ public sealed class WatcherService : IWatcherService
                 break;
             }
 
-            _logger.LogDebug("Validation failed for {File}; retrying attempt {Attempt}/{MaxAttempts}", filePath, attempt + 1, ValidationRetryMaxAttempts);
+            _logger.LogDebug(
+                "Validation failed for {File}; scheduling retry {NextAttempt}/{MaxAttempts}",
+                filePath,
+                attempt + 1,
+                ValidationRetryMaxAttempts);
             await Task.Delay(ValidationRetryDelayMilliseconds, cancellationToken);
         }
 

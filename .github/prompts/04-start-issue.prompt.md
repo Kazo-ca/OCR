@@ -23,6 +23,14 @@ The issue body contains a link to `plan.md`. Read `plan.md` and locate the corre
 
 Also read `project.md` to understand the current architecture and where the new code fits.
 
+## Step 2.5 — Check dependency readiness
+
+Inspect the issue body and the `plan.md` entry for dependency markers such as `Depends on: #XX`.
+
+If an upstream dependency is still open, unmerged, or not yet available in `main`/`develop`, stop here and tell the user the issue is blocked.
+
+Do not create or switch to a feature branch for blocked work unless the user explicitly asks for a non-coding preparation step.
+
 ## Step 3 — Parse the issue number for branch naming
 
 - Extract the iteration number `X` and issue number `Y` from the issue title format `[X.Y] ...`
@@ -86,4 +94,4 @@ Only begin implementation after explicit confirmation.
 - Never start work directly on `main` or `develop`
 - The branch must follow the naming convention exactly
 - Always sync with `develop` before creating the branch (pull --rebase)
-- If upstream dependencies are not yet merged, inform the user and wait for confirmation
+- If upstream dependencies are not yet merged, treat the issue as blocked and do not start implementation in parallel

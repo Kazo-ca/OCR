@@ -21,6 +21,14 @@ If the iteration section is missing or incomplete, stop and ask the user to run 
 
 Read `project.md` to understand the component architecture and ensure issue descriptions reference the correct components.
 
+## Step 2.5 — Validate dependency safety before creating issues
+
+Before creating any issue, inspect the requested iteration for hard dependencies.
+
+If an issue depends on another issue from the same iteration, or depends on a component that will only exist after another issue in the same iteration merges, stop and tell the user to re-plan the work into separate iterations with `02-plan-iteration.prompt.md`.
+
+Do not create a batch of issues that is expected to run in parallel when some of those issues are blocked on unmerged work from the same iteration.
+
 ## Step 3 — Check required labels exist
 
 Before creating issues, verify that the following labels exist on GitHub:
@@ -75,4 +83,6 @@ After all issues are created, output a summary table:
 - Issue bodies MUST reference `plan.md` — this is how Copilot reconstructs context in future sessions
 - Dependency references (`Depends on: #XX`) must use the actual GitHub issue numbers (not plan.md numbers)
 - Create issues in dependency order (dependencies first)
+- Do not create issues for an iteration that still contains hard same-iteration dependencies; stop and ask the user to split the blocked work into a later iteration
+- Issues created from the same iteration must all be startable from the current `main`/`develop` state without waiting for another new PR from that iteration to merge
 - Never create issues for iterations that are not yet in `plan.md`

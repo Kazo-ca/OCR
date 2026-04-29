@@ -78,6 +78,11 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
 
             await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
+            // WaitForExitAsync does not guarantee that all OutputDataReceived/ErrorDataReceived
+            // events have been raised. Call the synchronous WaitForExit() overload (no timeout)
+            // to drain any remaining buffered output before reading the StringBuilders.
+            process.WaitForExit();
+
             return new ProcessResult(
                 process.ExitCode,
                 stdOutBuilder.ToString().TrimEnd(),

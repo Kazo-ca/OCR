@@ -31,7 +31,7 @@ jobs:
 
 
       - name: Restore dependencies
-        run: dotnet restore KazoOCR.sln /p:BuildMAUI=false
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false
 
       - name: Build
         run: dotnet build KazoOCR.sln --no-restore --configuration Release /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false
@@ -55,7 +55,7 @@ jobs:
 
 
       - name: Restore dependencies
-        run: dotnet restore KazoOCR.sln /p:BuildMAUI=false
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false
 
       - name: Test with coverage
         run: dotnet test KazoOCR.sln --configuration Release --verbosity normal /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false --collect:"XPlat Code Coverage" --results-directory ./coverage

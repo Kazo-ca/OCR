@@ -80,7 +80,7 @@
 </div>
 
 @code {
-    private SetupModel _setupModel = new();
+    private readonly SetupModel _setupModel = new();
     private bool _loading;
     private string? _errorMessage;
 
@@ -145,9 +145,13 @@
                 _errorMessage = "Setup failed. The password may already be configured.";
             }
         }
-        catch (Exception ex)
+        catch (HttpRequestException ex)
         {
             _errorMessage = $"Setup failed: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Setup request timed out. Please try again.";
         }
         finally
         {

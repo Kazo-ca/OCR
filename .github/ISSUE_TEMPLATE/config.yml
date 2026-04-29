@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Full specification
+    url: ../blob/main/plan.md
+    about: All issues must correspond to an entry in plan.md. Read it before creating an issue.

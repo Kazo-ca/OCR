@@ -40,7 +40,7 @@ public class NavigationTests : IDisposable
         mock.Setup(c => c.GetJobsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<OcrJob>());
         mock.Setup(c => c.LoginAsync(It.IsAny<LoginRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LoginResponse { Success = true, Token = "test-token" });
+            .ReturnsAsync(new LoginResponse { Token = "test-token" });
         mock.Setup(c => c.GetSettingsAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new OcrSettings());
         return mock;

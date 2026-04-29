@@ -55,8 +55,9 @@ public class ApiKeyMiddleware
             return;
         }
 
-        // Skip API key check for Swagger endpoints
-        if (path.StartsWith("/swagger", StringComparison.Ordinal))
+        // Skip API key check for OpenAPI/Scalar endpoints
+        if (path.StartsWith("/openapi", StringComparison.Ordinal)
+            || path.StartsWith("/docs", StringComparison.Ordinal))
         {
             await _next(context);
             return;

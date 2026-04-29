@@ -89,7 +89,6 @@ void ConfigureApp(WebApplication webApp)
     webApp.UseAuthorization();
 
     webApp.MapControllers();
-    webApp.MapHealthChecks("/health");
 }
 
 async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)

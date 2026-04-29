@@ -1,22 +1,28 @@
+using System.Text.Json.Serialization;
+
 namespace KazoOCR.Web.Models;
 
 /// <summary>
 /// Login response from the API.
+/// Matches KazoOCR.Api.Models.LoginResponse: record LoginResponse(string Token, DateTimeOffset ExpiresAt)
 /// </summary>
 public sealed class LoginResponse
 {
     /// <summary>
-    /// Gets or sets a value indicating whether login was successful.
+    /// Gets or sets the authentication token.
     /// </summary>
-    public bool Success { get; set; }
+    [JsonPropertyName("token")]
+    public string Token { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the authentication token (if successful).
+    /// Gets or sets the token expiration timestamp.
     /// </summary>
-    public string? Token { get; set; }
+    [JsonPropertyName("expiresAt")]
+    public DateTimeOffset ExpiresAt { get; set; }
 
     /// <summary>
-    /// Gets or sets the error message (if failed).
+    /// Gets a value indicating whether the login was successful (token is present).
     /// </summary>
-    public string? Error { get; set; }
+    [JsonIgnore]
+    public bool Success => !string.IsNullOrEmpty(Token);
 }

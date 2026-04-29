@@ -1,0 +1,87 @@
+name: Iteration Issue
+description: >
+  Create an issue for a planned iteration item. The corresponding entry must already
+  exist in plan.md before this issue is created.
+title: "[X.Y] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > **Before creating this issue:** make sure the corresponding entry exists in
+        > [`plan.md`](../blob/main/plan.md). Issues without a `plan.md` reference will be rejected.
+        >
+        > Title format: `[X.Y] Short description` — e.g., `[5.2] Web API: Swagger / OpenAPI`
+
+  - type: input
+    id: plan-ref
+    attributes:
+      label: plan.md reference
+      description: >
+        Direct link to the issue entry in plan.md. Format:
+        `See [plan.md §Issue X.Y](../blob/main/plan.md#issue-xy---title) for full specification.`
+      placeholder: "See [plan.md §Issue X.Y](../blob/main/plan.md#issue-xy---title) for full specification."
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: >
+        Full description of the work to be done.
+        Copy from plan.md and expand with implementation details.
+      placeholder: |
+        - Task 1
+        - Task 2
+        - ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance-criteria
+    attributes:
+      label: Acceptance Criteria
+      description: Unchecked checklist of verifiable outcomes.
+      placeholder: |
+        - [ ] Criterion 1
+        - [ ] Criterion 2
+        - [ ] Tests pass on Ubuntu and Windows
+    validations:
+      required: true
+
+  - type: dropdown
+    id: iteration
+    attributes:
+      label: Iteration
+      description: Which iteration does this issue belong to?
+      options:
+        - "1"
+        - "2"
+        - "3"
+        - "4"
+        - "5"
+        - "6"
+        - "7"
+        - "8"
+    validations:
+      required: true
+
+  - type: input
+    id: estimation
+    attributes:
+      label: Estimation
+      description: Estimated effort in minutes (multiple of 30).
+      placeholder: "30"
+    validations:
+      required: false
+
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies
+      description: List any issues that must be completed before this one. Use #issue-number format.
+      placeholder: |
+        Depends on: #12, #15
+    validations:
+      required: false

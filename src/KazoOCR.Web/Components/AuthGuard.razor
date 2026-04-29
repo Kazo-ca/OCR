@@ -1,9 +1,9 @@
-@inject AuthStateService AuthState
+@inject IKazoApiClient ApiClient
 @inject NavigationManager Navigation
 
 @if (_initialized)
 {
-    @if (AuthState.IsAuthenticated)
+    @if (_isAuthenticated)
     {
         @ChildContent
     }
@@ -22,10 +22,12 @@ else
     public RenderFragment? ChildContent { get; set; }
 
     private bool _initialized;
+    private bool _isAuthenticated;
 
     protected override async Task OnInitializedAsync()
     {
-        var status = await AuthState.RefreshStatusAsync();
+        // Always check server-side status (no caching)
+        var status = await ApiClient.GetAuthStatusAsync();
 
         if (!status.Configured)
         {
@@ -41,6 +43,7 @@ else
             return;
         }
 
+        _isAuthenticated = true;
         _initialized = true;
     }
 }

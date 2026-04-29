@@ -15,7 +15,9 @@
 - **Batch processing** — Recursively process all PDFs in a folder
 - **Watch mode** — Continuously monitor a folder for new PDFs
 - **Cross-platform** — Works on Linux natively, Windows via WSL
-- **Docker support** — Run as a containerized service
+- **REST API** — Submit files and track jobs via HTTP endpoints
+- **Web UI** — Browser-based interface with drag & drop upload
+- **Docker support** — Run as a containerized multi-service deployment
 - **Windows Service** — Install as a background service
 - **MAUI UI** — Desktop application with drag & drop support
 
@@ -48,16 +50,25 @@ kazoocr install
 
 ### Docker
 
-Current Docker worker image starts successfully and emits service logs.
-Watch-folder OCR processing in the container is still being wired in the worker project.
+Run KazoOCR with the REST API and Web UI:
 
 ```bash
-# Using docker-compose
-docker compose up --build
+# Start all services
+docker compose up
 
-# Or directly with docker run
-docker run --rm kazoocr:latest
+# Access the services
+# API + Swagger:  http://localhost:5000/swagger
+# Web UI:         http://localhost:5001
 ```
+
+### Web UI
+
+Access the web interface at `http://localhost:5001`:
+
+1. On first run, create a password (or set `KAZO_DEFAULT_PASSWORD`)
+2. Upload PDFs via drag-and-drop on the Upload page
+3. Monitor processing status on the Dashboard
+4. Configure OCR settings in Settings
 
 ### MAUI (Windows Desktop)
 
@@ -98,6 +109,8 @@ KazoOCR.sln
 │   ├── KazoOCR.Core/      # Core business logic library
 │   ├── KazoOCR.CLI/       # Console application
 │   ├── KazoOCR.Docker/    # Worker Service for Docker
+│   ├── KazoOCR.Api/       # REST API (ASP.NET Core)
+│   ├── KazoOCR.Web/       # Web UI (Blazor)
 │   └── KazoOCR.UI/        # MAUI Desktop application
 ├── tests/
 │   └── KazoOCR.Tests/     # xUnit tests
@@ -107,6 +120,18 @@ KazoOCR.sln
 └── docs/                  # Documentation
 ```
 
+## Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `KAZO_API_PORT` | `5000` | HTTP port for REST API |
+| `KAZO_WEB_PORT` | `5001` | HTTP port for Web UI |
+| `KAZO_API_KEY` | *(empty)* | API key; no authentication when empty |
+| `KAZO_DEFAULT_PASSWORD` | *(empty)* | Web UI password; first-run wizard when empty |
+| `KAZO_WATCH_PATH` | `/data` | Folder watched for automatic processing |
+| `KAZO_SUFFIX` | `_OCR` | Suffix added to processed files |
+| `KAZO_LANGUAGES` | `fra+eng` | Tesseract language codes |
+
 ## Documentation
 
 For detailed documentation, see the [/docs](/docs) folder:
@@ -114,6 +139,8 @@ For detailed documentation, see the [/docs](/docs) folder:
 - [Architecture](docs/architecture.md) — Solution architecture and design
 - [Core](docs/core.md) — Core library documentation
 - [CLI](docs/cli.md) — CLI application documentation
+- [API](docs/api.md) — REST API documentation
+- [Web](docs/web.md) — Web UI documentation
 - [Docker](docs/docker.md) — Docker deployment guide
 - [Service](docs/service.md) — Windows Service documentation
 - [UI](docs/ui.md) — MAUI application documentation

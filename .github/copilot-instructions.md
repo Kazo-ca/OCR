@@ -36,6 +36,12 @@ tests/KazoOCR.Tests/    # xUnit tests
 - Title format: `[X.Y] Short description matching the issue title`
 - Keep PRs focused on one issue — no bundling multiple issues in one PR
 
+## Iteration Discipline
+
+- Do not plan hard producer/consumer dependencies in the same iteration when the consumer requires code that is not yet merged to `main`
+- If issue X.Y depends on new code from issue X.Z, move the dependent work to a later iteration instead of starting both in parallel
+- Do not start implementation for an issue whose upstream dependency is still open or unmerged
+
 ## Testing
 
 - Target >80% coverage on `KazoOCR.Core`

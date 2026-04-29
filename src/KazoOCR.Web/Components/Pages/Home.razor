@@ -1,7 +1,8 @@
 ﻿@page "/"
 @inject IKazoApiClient ApiClient
+@inject IJSRuntime JS
 @rendermode InteractiveServer
-@implements IDisposable
+@implements IAsyncDisposable
 
 <PageTitle>Dashboard - KazoOCR</PageTitle>
 
@@ -59,9 +60,9 @@
                                 <td>
                                     @if (job.Status == JobStatus.Completed)
                                     {
-                                        <button class="btn btn-sm btn-success" @onclick="() => DownloadJob(job.Id)">
-                                            Download
-                                        </button>
+                                        <span class="text-muted small" title="Download not yet implemented">
+                                            <i class="bi bi-download"></i> (Coming soon)
+                                        </span>
                                     }
                                     @if (job.Status == JobStatus.Failed)
                                     {
@@ -94,20 +95,34 @@
     private List<OcrJob> _jobs = [];
     private bool _loading = true;
     private DateTime? _lastRefresh;
-    private Timer? _timer;
     private CancellationTokenSource? _cts;
+    private Task? _pollingTask;
 
     protected override async Task OnInitializedAsync()
     {
         _cts = new CancellationTokenSource();
         await RefreshJobsAsync();
 
-        // Set up polling every 2 seconds
-        _timer = new Timer(async _ =>
+        // Start background polling using PeriodicTimer for thread safety
+        _pollingTask = PollJobsAsync(_cts.Token);
+    }
+
+    private async Task PollJobsAsync(CancellationToken cancellationToken)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
+        try
         {
-            await RefreshJobsAsync();
-            await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            while (await timer.WaitForNextTickAsync(cancellationToken))
+            {
+                await RefreshJobsAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected during disposal
+        }
     }
 
     private async Task RefreshJobsAsync()
@@ -118,9 +133,9 @@
             _jobs = jobs.OrderByDescending(j => j.CreatedAt).ToList();
             _lastRefresh = DateTime.UtcNow;
         }
-        catch (Exception)
+        catch (OperationCanceledException)
         {
-            // Ignore errors during polling
+            // Ignore expected cancellation during shutdown/disposal
         }
         finally
         {
@@ -143,22 +158,24 @@
         await RefreshJobsAsync();
     }
 
-    private async Task DownloadJob(string jobId)
+    public async ValueTask DisposeAsync()
     {
-        // In a real implementation, this would trigger a file download
-        // For now, we'll just navigate to a download URL
-        var job = _jobs.FirstOrDefault(j => j.Id == jobId);
-        if (job != null)
+        if (_cts != null)
         {
-            // The download would be handled by the API
-            await Task.CompletedTask;
+            await _cts.CancelAsync();
+            _cts.Dispose();
         }
-    }
 
-    public void Dispose()
-    {
-        _timer?.Dispose();
-        _cts?.Cancel();
-        _cts?.Dispose();
+        if (_pollingTask != null)
+        {
+            try
+            {
+                await _pollingTask;
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected
+            }
+        }
     }
 }

@@ -31,10 +31,14 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore KazoOCR.sln
+      - name: Install MAUI workloads
+        if: matrix.os == 'windows-latest'
+        run: dotnet workload install maui-windows
 
-      - name: Build (skip MAUI on Ubuntu)
+      - name: Restore dependencies
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
+
+      - name: Build
         run: dotnet build KazoOCR.sln --no-restore --configuration Release /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
 
   test:
@@ -53,8 +57,12 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install MAUI workloads
+        if: matrix.os == 'windows-latest'
+        run: dotnet workload install maui-windows
+
       - name: Restore dependencies
-        run: dotnet restore KazoOCR.sln
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
 
       - name: Test with coverage
         run: dotnet test KazoOCR.sln --configuration Release --verbosity normal /p:BuildMAUI=${{ matrix.os == 'windows-latest' }} --collect:"XPlat Code Coverage" --results-directory ./coverage

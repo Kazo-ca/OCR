@@ -29,9 +29,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install MAUI workloads
-        if: matrix.os == 'windows-latest'
-        run: dotnet workload restore KazoOCR.sln
 
       - name: Restore dependencies
         run: dotnet restore KazoOCR.sln /p:BuildMAUI=false
@@ -55,9 +52,7 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install MAUI workloads
-        if: matrix.os == 'windows-latest'
-        run: dotnet workload restore KazoOCR.sln
+
 
       - name: Restore dependencies
         run: dotnet restore KazoOCR.sln /p:BuildMAUI=false

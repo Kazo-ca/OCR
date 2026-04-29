@@ -14,6 +14,7 @@ if (args.Length >= 2 && args[0] == "--generate-openapi")
     // Build minimal app just to generate OpenAPI spec
     ConfigureServices(builder);
     var genApp = builder.Build();
+    genApp.MapDefaultEndpoints();
     ConfigureApp(genApp);
 
     // Generate OpenAPI JSON
@@ -22,14 +23,13 @@ if (args.Length >= 2 && args[0] == "--generate-openapi")
     return;
 }
 
-genApp.MapDefaultEndpoints();
-
 // Add configuration from environment variables
 builder.Configuration.AddEnvironmentVariables("KAZO_");
 
 ConfigureServices(builder);
 
 var app = builder.Build();
+app.MapDefaultEndpoints();
 
 ConfigureApp(app);
 

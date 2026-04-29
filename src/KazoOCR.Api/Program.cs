@@ -1,45 +1,108 @@
+using System.Reflection;
+using KazoOCR.Api.Middleware;
+using KazoOCR.Api.Services;
 using KazoOCR.Core;
+using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel to listen on port 5000
-var port = Environment.GetEnvironmentVariable("KAZO_API_PORT") ?? "5000";
-builder.WebHost.UseUrls($"http://*:{port}");
+// Check for OpenAPI generation mode
+if (args.Length >= 2 && args[0] == "--generate-openapi")
+{
+    // Build minimal app just to generate OpenAPI spec
+    ConfigureServices(builder);
+    var genApp = builder.Build();
+    ConfigureApp(genApp);
 
-// Add services to the container.
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+    // Generate OpenAPI JSON
+    var outputPath = args[1];
+    await GenerateOpenApiSpec(genApp, outputPath);
+    return;
+}
 
-// Register Core services
-builder.Services.AddSingleton<IOcrFileService, OcrFileService>();
-builder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
-builder.Services.AddSingleton<IWatcherService, WatcherService>();
+// Add configuration from environment variables
+builder.Configuration.AddEnvironmentVariables("KAZO_");
+
+ConfigureServices(builder);
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-app.UseSwagger();
-app.UseSwaggerUI(c =>
-{
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "KazoOCR API v1");
-    c.RoutePrefix = "swagger";
-});
+ConfigureApp(app);
 
-// Health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTimeOffset.UtcNow }))
-   .WithName("HealthCheck");
-
-// Placeholder endpoints - to be implemented in issue #29
-app.MapPost("/api/ocr/process", () => Results.Ok(new { message = "Not yet implemented" }))
-   .WithName("ProcessOcr");
-
-app.MapGet("/api/ocr/jobs", () => Results.Ok(new { jobs = Array.Empty<object>() }))
-   .WithName("ListJobs");
-
-app.MapGet("/api/ocr/jobs/{id}", (string id) => Results.Ok(new { id, status = "pending" }))
-   .WithName("GetJob");
-
-app.MapDelete("/api/ocr/jobs/{id}", (string id) => Results.Ok(new { deleted = id }))
-   .WithName("DeleteJob");
+var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
+app.Urls.Add($"http://*:{port}");
 
 app.Run();
+
+void ConfigureServices(WebApplicationBuilder webAppBuilder)
+{
+    // Add controllers
+    webAppBuilder.Services.AddControllers();
+
+    // Register Core services
+    webAppBuilder.Services.AddSingleton<IOcrFileService, OcrFileService>();
+    webAppBuilder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
+    webAppBuilder.Services.AddSingleton<IWatcherService, WatcherService>();
+
+    // Register Auth service
+    webAppBuilder.Services.AddSingleton<IAuthService, AuthService>();
+
+    // Register OCR Job services
+    webAppBuilder.Services.AddSingleton<OcrJobService>();
+    webAppBuilder.Services.AddSingleton<IOcrJobService>(sp => sp.GetRequiredService<OcrJobService>());
+
+    // Register background services
+    webAppBuilder.Services.AddHostedService<OcrJobProcessorService>();
+    webAppBuilder.Services.AddHostedService<OcrWorkerBackgroundService>();
+
+    // Add health checks
+    webAppBuilder.Services.AddHealthChecks();
+
+    // Add OpenAPI
+    webAppBuilder.Services.AddOpenApi();
+}
+
+void ConfigureApp(WebApplication webApp)
+{
+    // Configure the HTTP request pipeline
+    const string openApiRoutePattern = "/openapi/{documentName}.json";
+    const string apiReferenceRoutePrefix = "/docs";
+
+    webApp.MapOpenApi(openApiRoutePattern);
+    webApp.MapScalarApiReference(apiReferenceRoutePrefix, options =>
+    {
+        options.WithOpenApiRoutePattern(openApiRoutePattern);
+    });
+
+    // API Key middleware (only enforced if KAZO_API_KEY is set)
+    webApp.UseApiKeyAuthentication();
+
+    webApp.UseAuthorization();
+
+    webApp.MapControllers();
+    webApp.MapHealthChecks("/health");
+}
+
+async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)
+{
+    // Start the app to generate the OpenAPI spec
+    await webApp.StartAsync();
+
+    try
+    {
+        using var httpClient = new HttpClient();
+        var openApiJson = await httpClient.GetStringAsync("http://localhost:5000/openapi/v1.json");
+        await File.WriteAllTextAsync(outputPath, openApiJson);
+        Console.WriteLine($"OpenAPI spec written to {outputPath}");
+    }
+    finally
+    {
+        await webApp.StopAsync();
+    }
+}
+
+// Make Program accessible for WebApplicationFactory in tests
+namespace KazoOCR.Api
+{
+    public partial class Program { }
+}

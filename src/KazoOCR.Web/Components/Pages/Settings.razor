@@ -1,0 +1,239 @@
+@page "/settings"
+@inject IKazoApiClient ApiClient
+@rendermode InteractiveServer
+
+<PageTitle>Settings - KazoOCR</PageTitle>
+
+<AuthGuard>
+    <div class="container-fluid">
+        <h1 class="mb-4">OCR Settings</h1>
+
+        <div class="alert alert-info mb-4">
+            <i class="bi bi-info-circle"></i>
+            <strong>Note:</strong> Settings persistence is not yet implemented in the API.
+            Changes made here are only applied to the current session.
+        </div>
+
+        @if (_loading)
+        {
+            <div class="d-flex justify-content-center">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>
+        }
+        else
+        {
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Default OCR Options</h5>
+                        </div>
+                        <div class="card-body">
+                            @if (_successMessage != null)
+                            {
+                                <div class="alert alert-success alert-dismissible fade show">
+                                    @_successMessage
+                                    <button type="button" class="btn-close" @onclick="() => _successMessage = null"></button>
+                                </div>
+                            }
+
+                            @if (_errorMessage != null)
+                            {
+                                <div class="alert alert-danger alert-dismissible fade show">
+                                    @_errorMessage
+                                    <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
+                                </div>
+                            }
+
+                            <EditForm Model="_settings" OnValidSubmit="SaveSettings">
+                                <div class="mb-3">
+                                    <label class="form-label">Output Suffix</label>
+                                    <InputText @bind-Value="_settings.Suffix" class="form-control" />
+                                    <small class="text-muted">Suffix added to processed files (e.g., _OCR)</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Default Languages</label>
+                                    <InputText @bind-Value="_settings.Languages" class="form-control"
+                                               placeholder="e.g., fra+eng" />
+                                    <small class="text-muted">Tesseract language codes for OCR</small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Watch Path</label>
+                                    <InputText @bind-Value="_settings.WatchPath" class="form-control" />
+                                    <small class="text-muted">Folder path for automatic OCR processing</small>
+                                </div>
+
+                                <hr />
+
+                                <div class="mb-3 form-check">
+                                    <InputCheckbox @bind-Value="_settings.Deskew" class="form-check-input" id="deskewCheck" />
+                                    <label class="form-check-label" for="deskewCheck">Deskew by Default</label>
+                                    <small class="d-block text-muted">Automatically straighten tilted pages</small>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <InputCheckbox @bind-Value="_settings.Clean" class="form-check-input" id="cleanCheck" />
+                                    <label class="form-check-label" for="cleanCheck">Clean by Default</label>
+                                    <small class="d-block text-muted">Remove noise with Unpaper</small>
+                                </div>
+
+                                <div class="mb-3 form-check">
+                                    <InputCheckbox @bind-Value="_settings.Rotate" class="form-check-input" id="rotateCheck" />
+                                    <label class="form-check-label" for="rotateCheck">Auto-Rotate by Default</label>
+                                    <small class="d-block text-muted">Detect and fix page orientation</small>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label class="form-label">Default Optimization Level: @_settings.Optimize</label>
+                                    <InputNumber @bind-Value="_settings.Optimize" class="form-range"
+                                                 type="range" min="0" max="3" step="1" />
+                                    <div class="d-flex justify-content-between small text-muted">
+                                        <span>0 (None)</span>
+                                        <span>1 (Lossless)</span>
+                                        <span>2 (Lossy)</span>
+                                        <span>3 (Max)</span>
+                                    </div>
+                                </div>
+
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-primary" disabled="@_saving">
+                                        @if (_saving)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                        }
+                                        Save Settings
+                                    </button>
+                                    <button type="button" class="btn btn-outline-secondary" @onclick="ResetToDefaults">
+                                        Reset to Defaults
+                                    </button>
+                                </div>
+                            </EditForm>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">About Settings</h5>
+                        </div>
+                        <div class="card-body">
+                            <h6>Output Suffix</h6>
+                            <p class="text-muted small">
+                                The suffix is appended to the original filename when saving processed files.
+                                For example, <code>document.pdf</code> becomes <code>document_OCR.pdf</code>.
+                            </p>
+
+                            <h6>Languages</h6>
+                            <p class="text-muted small">
+                                Specify Tesseract language codes separated by <code>+</code>.
+                                Common codes: <code>eng</code> (English), <code>fra</code> (French),
+                                <code>deu</code> (German), <code>spa</code> (Spanish).
+                            </p>
+
+                            <h6>Optimization Levels</h6>
+                            <ul class="text-muted small">
+                                <li><strong>0:</strong> No optimization (largest files)</li>
+                                <li><strong>1:</strong> Lossless compression (recommended)</li>
+                                <li><strong>2:</strong> Lossy compression (smaller files)</li>
+                                <li><strong>3:</strong> Maximum compression (smallest files)</li>
+                            </ul>
+
+                            <h6>Watch Path</h6>
+                            <p class="text-muted small">
+                                The background worker automatically processes PDF files placed in this folder.
+                                Processed files are saved with the configured suffix.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+</AuthGuard>
+
+@code {
+    private OcrSettings _settings = new();
+    private bool _loading = true;
+    private bool _saving;
+    private string? _successMessage;
+    private string? _errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettings();
+    }
+
+    private async Task LoadSettings()
+    {
+        _loading = true;
+        try
+        {
+            _settings = await ApiClient.GetSettingsAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Failed to load settings: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Request timed out while loading settings.";
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveSettings()
+    {
+        _saving = true;
+        _successMessage = null;
+        _errorMessage = null;
+
+        try
+        {
+            var success = await ApiClient.UpdateSettingsAsync(_settings);
+            if (success)
+            {
+                _successMessage = "Settings saved successfully!";
+            }
+            else
+            {
+                _errorMessage = "Failed to save settings";
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Error: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Request timed out while saving settings.";
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void ResetToDefaults()
+    {
+        _settings = new OcrSettings
+        {
+            Suffix = "_OCR",
+            Languages = "fra+eng",
+            Deskew = true,
+            Clean = false,
+            Rotate = true,
+            Optimize = 1,
+            WatchPath = "/data"
+        };
+        _successMessage = null;
+        _errorMessage = null;
+    }
+}

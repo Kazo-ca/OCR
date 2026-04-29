@@ -1,23 +1,30 @@
 using KazoOCR.Web.Components;
+using KazoOCR.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Kestrel to listen on port 5001
-var port = Environment.GetEnvironmentVariable("KAZO_WEB_PORT") ?? "5001";
+// Read configuration from appsettings.json with environment variable overrides
+var port = builder.Configuration["KazoOCR:WebPort"]
+    ?? Environment.GetEnvironmentVariable("KAZO_WEB_PORT")
+    ?? "5001";
 builder.WebHost.UseUrls($"http://*:{port}");
-
-// Get API base URL from environment
-var apiBaseUrl = Environment.GetEnvironmentVariable("KAZO_API_BASE_URL") ?? "http://api:5000";
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Register typed HttpClient for API communication
-builder.Services.AddHttpClient("KazoOcrApi", client =>
+// Configure typed HttpClient for API communication
+var apiBaseUrl = builder.Configuration["KazoOCR:ApiBaseUrl"]
+    ?? Environment.GetEnvironmentVariable("KAZO_API_BASE_URL")
+    ?? "http://api:5000";
+builder.Services.AddHttpClient<IKazoApiClient, KazoApiClient>(client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
+    client.Timeout = TimeSpan.FromSeconds(30);
 });
+
+// Register authentication state service
+builder.Services.AddScoped<AuthStateService>();
 
 var app = builder.Build();
 
@@ -25,10 +32,8 @@ var app = builder.Build();
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Error", createScopeForErrors: true);
-    app.UseHsts();
 }
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
-
 app.UseAntiforgery();
 
 app.MapStaticAssets();

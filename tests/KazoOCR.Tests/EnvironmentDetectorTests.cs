@@ -257,6 +257,7 @@ public class EnvironmentDetectorTests
     {
         // This test verifies that WaitForExit() is called after WaitForExitAsync() so that all
         // OutputDataReceived/ErrorDataReceived events are fully drained before reading the output.
+        // Skipped on Windows because the sh/echo syntax used below is Unix-specific.
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
             return;
@@ -264,7 +265,7 @@ public class EnvironmentDetectorTests
 
         // Arrange
         var detector = new EnvironmentDetector();
-        // printf writes multiple lines without a trailing newline, making it a good short-lived test
+        // echo writes a single line quickly, exercising the drain path for short-lived processes
         const string expectedLine = "line1";
 
         // Act

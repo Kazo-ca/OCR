@@ -71,4 +71,3 @@ jobs:
           name: coverage-${{ matrix.os }}
           path: coverage/**/coverage.cobertura.xml
           retention-days: 7
-          

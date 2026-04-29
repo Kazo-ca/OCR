@@ -1,7 +1,6 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.0.31903.59
+# Visual Studio Version 18
+VisualStudioVersion = 18.5.11716.220 stable
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{827E0CD3-B72D-47B6-A68D-7590B98EB39B}"
 EndProject
@@ -20,7 +19,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KazoOCR.UI.Tests", "tests\KazoOCR.UI.Tests\KazoOCR.UI.Tests.csproj", "{2B655736-0B68-4A73-9BA0-DFE5EF2EE4B1}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KazoOCR.Web", "src\KazoOCR.Web\KazoOCR.Web.csproj", "{A811D2E2-3882-4203-BBCC-2D57079B106B}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KazoOCR.Api", "src\KazoOCR.Api\KazoOCR.Api.csproj", "{7D6BDE59-0E88-4273-B1B2-691C31EA34CB}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KazoOCR.AppHost", "src\KazoOCR.AppHost\KazoOCR.AppHost.csproj", "{DFF386D3-8966-40CE-8525-4B4AA20B9942}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "KazoOCR.ServiceDefaults", "src\KazoOCR.ServiceDefaults\KazoOCR.ServiceDefaults.csproj", "{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -128,6 +132,30 @@ Global
 		{7D6BDE59-0E88-4273-B1B2-691C31EA34CB}.Release|x64.Build.0 = Release|Any CPU
 		{7D6BDE59-0E88-4273-B1B2-691C31EA34CB}.Release|x86.ActiveCfg = Release|Any CPU
 		{7D6BDE59-0E88-4273-B1B2-691C31EA34CB}.Release|x86.Build.0 = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|x64.Build.0 = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Debug|x86.Build.0 = Debug|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|x64.ActiveCfg = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|x64.Build.0 = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|x86.ActiveCfg = Release|Any CPU
+		{DFF386D3-8966-40CE-8525-4B4AA20B9942}.Release|x86.Build.0 = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|x64.Build.0 = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Debug|x86.Build.0 = Debug|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|Any CPU.Build.0 = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|x64.ActiveCfg = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|x64.Build.0 = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|x86.ActiveCfg = Release|Any CPU
+		{75111649-6E23-8E10-1E6C-0ED8FC5FCB84}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

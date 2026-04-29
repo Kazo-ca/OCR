@@ -14,6 +14,8 @@ KazoOCR.sln
 │   ├── KazoOCR.Core/          # Business logic library (.NET 10)
 │   ├── KazoOCR.CLI/           # Console application (.NET 10)
 │   ├── KazoOCR.Docker/        # Worker Service (.NET 10)
+│   ├── KazoOCR.Api/           # ASP.NET Core Web API (.NET 10)
+│   ├── KazoOCR.Web/           # Blazor Web App (.NET 10)
 │   └── KazoOCR.UI/            # MAUI Desktop application
 ├── tests/
 │   └── KazoOCR.Tests/         # xUnit tests
@@ -28,8 +30,10 @@ KazoOCR.sln
 ```
 KazoOCR.CLI ──────► KazoOCR.Core
 KazoOCR.Docker ───► KazoOCR.Core
+KazoOCR.Api ──────► KazoOCR.Core
+KazoOCR.Web ──────► KazoOCR.Api (HTTP)
 KazoOCR.UI ───────► KazoOCR.Core
-KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI
+KazoOCR.Tests ────► KazoOCR.Core + KazoOCR.CLI + KazoOCR.Api + KazoOCR.Web
 ```
 
 ## Key Design Decisions
@@ -56,8 +60,13 @@ This allows both CLI and Docker projects to share the same watch implementation.
 | CLI | `Microsoft.Extensions.Hosting` | Host for watch/service modes |
 | CLI | `Microsoft.Extensions.Hosting.WindowsServices` | Windows Service support |
 | Docker | `Microsoft.Extensions.Hosting` | Worker Service |
+| Api | `Microsoft.AspNetCore.OpenApi` | OpenAPI / Swagger support |
+| Api | `Swashbuckle.AspNetCore` | Swagger UI |
+| Api | `Microsoft.Extensions.Hosting` | Host + BackgroundService |
+| Web | `Microsoft.AspNetCore.Components.WebAssembly` | Blazor Web App |
 | UI | `Microsoft.Maui.*` | UI framework |
 | Tests | `xunit`, `Moq`, `FluentAssertions` | Testing |
+| Tests | `Microsoft.AspNetCore.Mvc.Testing` | Integration tests (WebApplicationFactory) |
 
 ## Related Documentation
 
@@ -65,4 +74,6 @@ This allows both CLI and Docker projects to share the same watch implementation.
 - [CLI](cli.md) — CLI application
 - [Docker](docker.md) — Docker deployment
 - [Service](service.md) — Windows Service
+- [API](api.md) — REST API
+- [Web](web.md) — Blazor Web UI
 - [UI](ui.md) — MAUI application

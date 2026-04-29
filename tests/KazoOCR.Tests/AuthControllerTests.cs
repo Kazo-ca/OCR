@@ -229,6 +229,6 @@ public class AuthControllerTests : IClassFixture<WebApplicationFactory<KazoOCR.A
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         var content = await response.Content.ReadAsStringAsync();
-        content.ToLowerInvariant().Should().Contain("healthy");
+        content.Should().ContainEquivalentOf("healthy");
     }
 }

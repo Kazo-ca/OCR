@@ -198,7 +198,7 @@ public class ApiKeyMiddlewareTests
         };
 
         var middleware = new ApiKeyMiddleware(next, configuration, _loggerMock.Object);
-        _httpContext.Request.Path = "/swagger/v1/swagger.json";
+        _httpContext.Request.Path = "/openapi/v1.json";
 
         // Act
         await middleware.InvokeAsync(_httpContext);

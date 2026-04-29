@@ -31,6 +31,7 @@
     <ProjectReference Include="..\..\src\KazoOCR.CLI\KazoOCR.CLI.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Docker\KazoOCR.Docker.csproj" />
     <ProjectReference Include="..\..\src\KazoOCR.Api\KazoOCR.Api.csproj" />
+    <ProjectReference Include="..\..\src\KazoOCR.Web\KazoOCR.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(BuildMAUI)' == 'true'">

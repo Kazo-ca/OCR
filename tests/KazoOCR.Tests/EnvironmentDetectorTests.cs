@@ -252,5 +252,29 @@ public class EnvironmentDetectorTests
             async () => await detector.RunProcessAsync(command, args, cts.Token));
     }
 
+    [Fact]
+    public async Task RunProcessAsync_CapturesFullOutputFromShortLivedProcess()
+    {
+        // This test verifies that WaitForExit() is called after WaitForExitAsync() so that all
+        // OutputDataReceived/ErrorDataReceived events are fully drained before reading the output.
+        // Skipped on Windows because the sh/echo syntax used below is Unix-specific.
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            return;
+        }
+
+        // Arrange
+        var detector = new EnvironmentDetector();
+        // echo writes a single line quickly, exercising the drain path for short-lived processes
+        const string expectedLine = "line1";
+
+        // Act
+        var result = await detector.RunProcessAsync("sh", $"-c \"echo {expectedLine}\"", CancellationToken.None);
+
+        // Assert
+        result.ExitCode.Should().Be(0);
+        result.StandardOutput.Should().Contain(expectedLine, "all stdout must be captured before ProcessResult is constructed");
+    }
+
     #endregion
 }

@@ -6,6 +6,8 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // Check for OpenAPI generation mode
 if (args.Length >= 2 && args[0] == "--generate-openapi")
 {
@@ -19,6 +21,8 @@ if (args.Length >= 2 && args[0] == "--generate-openapi")
     await GenerateOpenApiSpec(genApp, outputPath);
     return;
 }
+
+genApp.MapDefaultEndpoints();
 
 // Add configuration from environment variables
 builder.Configuration.AddEnvironmentVariables("KAZO_");

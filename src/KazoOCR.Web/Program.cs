@@ -3,6 +3,8 @@ using KazoOCR.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // Read configuration from appsettings.json with environment variable overrides
 var port = builder.Configuration["KazoOCR:WebPort"]
     ?? Environment.GetEnvironmentVariable("KAZO_WEB_PORT")
@@ -27,6 +29,8 @@ builder.Services.AddHttpClient<IKazoApiClient, KazoApiClient>(client =>
 builder.Services.AddScoped<AuthStateService>();
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())

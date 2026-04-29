@@ -34,7 +34,7 @@ jobs:
         run: dotnet restore KazoOCR.sln /p:BuildMAUI=false
 
       - name: Build
-        run: dotnet build KazoOCR.sln --no-restore --configuration Release /p:BuildMAUI=false
+        run: dotnet build KazoOCR.sln --no-restore --configuration Release /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false
 
   test:
     if: github.event.pull_request.draft == false
@@ -58,7 +58,7 @@ jobs:
         run: dotnet restore KazoOCR.sln /p:BuildMAUI=false
 
       - name: Test with coverage
-        run: dotnet test KazoOCR.sln --configuration Release --verbosity normal /p:BuildMAUI=false --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test KazoOCR.sln --configuration Release --verbosity normal /p:BuildMAUI=false /p:MSBuildEnableWorkloadResolver=false --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4

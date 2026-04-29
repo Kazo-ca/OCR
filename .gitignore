@@ -58,3 +58,5 @@ CopilotProjectTemplate/
 
 # Local-only notes
 *.localonly.md
+.vs/*
+*.log

@@ -22,7 +22,8 @@ docker compose up -d --build
 ```
 
 Once running:
-- **API + Swagger**: http://localhost:5000/swagger
+- **API Documentation**: http://localhost:5000/docs
+- **OpenAPI JSON**: http://localhost:5000/openapi/v1.json
 - **Web Dashboard**: http://localhost:5001
 
 ## Services
@@ -31,7 +32,8 @@ Once running:
 
 The API service runs `KazoOCR.Api` and provides:
 - REST endpoints for OCR job management
-- Swagger documentation at `/swagger`
+- Scalar API reference at `/docs`
+- OpenAPI JSON at `/openapi/v1.json`
 - Health check at `/health`
 - Embedded background worker watching `/data` for new PDFs
 
@@ -131,9 +133,19 @@ docker build -t kazoocr-worker:latest -f docker/Dockerfile --target worker .
 
 Shared volume for PDF files. The API worker monitors this folder and processes new PDFs.
 
+When using bind mounts with host directories, ensure the directory is writable by the container user (UID 1000 by default):
+
 ```bash
-# Mount a host directory for PDF processing
+# Option 1: Use a named volume (recommended)
+docker run -v kazoocr-data:/data kazoocr-api:latest
+
+# Option 2: Bind mount with correct permissions
+mkdir -p /home/user/documents
+chmod 777 /home/user/documents  # Or chown to match container UID
 docker run -v /home/user/documents:/data kazoocr-api:latest
+
+# Option 3: Run as current user
+docker run --user "$(id -u):$(id -g)" -v /home/user/documents:/data kazoocr-api:latest
 ```
 
 ### auth
@@ -162,7 +174,17 @@ The standalone `KazoOCR.Docker` worker service can be used independently:
 ```bash
 # Build and run the legacy worker
 docker build -t kazoocr-worker:latest -f docker/Dockerfile --target worker .
+
+# Option 1: Use a named volume (recommended)
+docker run -v kazoocr-watch:/watch kazoocr-worker:latest
+
+# Option 2: Bind mount with correct permissions
+mkdir -p /home/user/documents
+chmod 777 /home/user/documents  # Or chown to match container UID
 docker run -v /home/user/documents:/watch kazoocr-worker:latest
+
+# Option 3: Run as current user
+docker run --user "$(id -u):$(id -g)" -v /home/user/documents:/watch kazoocr-worker:latest
 ```
 
 ## Related Documentation

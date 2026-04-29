@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- MAUI build conditional: only build on Windows or when /p:BuildMAUI=true is specified -->
   <PropertyGroup>
@@ -27,9 +27,13 @@
     <OutputType>Library</OutputType>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
-
-  <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
+  
+<itemGroup>
+    <InternalsVisibleTo Include="KazoOCR.Tests" />
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
+  </itemGroup>
+  <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
+    
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.41" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="CommunityToolkit.Maui" Version="14.1.0" />

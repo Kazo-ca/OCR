@@ -31,11 +31,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore
+      - name: Install MAUI workloads
+        if: matrix.os == 'windows-latest'
+        run: dotnet workload install maui-windows
 
-      - name: Build (skip MAUI on Ubuntu)
-        run: dotnet build --no-restore --configuration Release /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
+      - name: Restore dependencies
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
+
+      - name: Build
+        run: dotnet build KazoOCR.sln --no-restore --configuration Release /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
 
   test:
     if: github.event.pull_request.draft == false
@@ -53,11 +57,15 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Install MAUI workloads
+        if: matrix.os == 'windows-latest'
+        run: dotnet workload install maui-windows
+
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore KazoOCR.sln /p:BuildMAUI=${{ matrix.os == 'windows-latest' }}
 
       - name: Test with coverage
-        run: dotnet test --configuration Release --verbosity normal /p:BuildMAUI=${{ matrix.os == 'windows-latest' }} --collect:"XPlat Code Coverage" --results-directory ./coverage
+        run: dotnet test KazoOCR.sln --configuration Release --verbosity normal /p:BuildMAUI=${{ matrix.os == 'windows-latest' }} --collect:"XPlat Code Coverage" --results-directory ./coverage
 
       - name: Upload coverage reports
         uses: actions/upload-artifact@v4

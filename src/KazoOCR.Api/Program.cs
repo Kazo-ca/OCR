@@ -6,12 +6,15 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.AddServiceDefaults();
+
 // Check for OpenAPI generation mode
 if (args.Length >= 2 && args[0] == "--generate-openapi")
 {
     // Build minimal app just to generate OpenAPI spec
     ConfigureServices(builder);
     var genApp = builder.Build();
+    genApp.MapDefaultEndpoints();
     ConfigureApp(genApp);
 
     // Generate OpenAPI JSON
@@ -26,6 +29,7 @@ builder.Configuration.AddEnvironmentVariables("KAZO_");
 ConfigureServices(builder);
 
 var app = builder.Build();
+app.MapDefaultEndpoints();
 
 ConfigureApp(app);
 
@@ -85,7 +89,6 @@ void ConfigureApp(WebApplication webApp)
     webApp.UseAuthorization();
 
     webApp.MapControllers();
-    webApp.MapHealthChecks("/health");
 }
 
 async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)

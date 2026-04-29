@@ -241,7 +241,7 @@ public class OcrEndpointTests : IDisposable
         using var client = factory.CreateClient();
 
         // Act
-        var response = await client.GetAsync("/swagger/v1/swagger.json");
+        var response = await client.GetAsync("/openapi/v1.json");
 
         // Assert
         response.StatusCode.Should().Be(HttpStatusCode.OK);
@@ -311,9 +311,9 @@ public class OcrEndpointTests : IDisposable
         // Note: NOT adding X-Api-Key header
 
         // Act
-        var response = await client.GetAsync("/swagger/v1/swagger.json");
+        var response = await client.GetAsync("/openapi/v1.json");
 
-        // Assert - swagger endpoint should be accessible without API key
+        // Assert - openapi endpoint should be accessible without API key
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
 }

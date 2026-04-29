@@ -1,8 +1,35 @@
 services:
-  kazoocr:
+  api:
     build:
       context: .
       dockerfile: docker/Dockerfile
+      target: api
+    ports:
+      - "${KAZO_API_PORT:-5000}:5000"
     volumes:
-      - ./watch:/watch
+      - data:/data
+      - auth:/app/data
+    environment:
+      - KAZO_WATCH_PATH=/data
+      - KAZO_SUFFIX=${KAZO_SUFFIX:-_OCR}
+      - KAZO_LANGUAGES=${KAZO_LANGUAGES:-fra+eng}
+      - KAZO_API_KEY=${KAZO_API_KEY:-}
+      - KAZO_DEFAULT_PASSWORD=${KAZO_DEFAULT_PASSWORD:-}
     restart: unless-stopped
+
+  web:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: web
+    ports:
+      - "${KAZO_WEB_PORT:-5001}:5001"
+    environment:
+      - KAZO_API_BASE_URL=http://api:5000
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  data:
+  auth:

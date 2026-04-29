@@ -29,8 +29,13 @@ var app = builder.Build();
 
 ConfigureApp(app);
 
-var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
-app.Urls.Add($"http://*:{port}");
+// Only configure URL binding in non-Development environments (Docker)
+// In Development, launchSettings.json takes precedence
+if (!app.Environment.IsDevelopment())
+{
+    var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
+    app.Urls.Add($"http://*:{port}");
+}
 
 app.Run();
 

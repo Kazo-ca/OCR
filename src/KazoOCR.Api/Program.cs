@@ -29,8 +29,13 @@ var app = builder.Build();
 
 ConfigureApp(app);
 
-var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
-app.Urls.Add($"http://*:{port}");
+// Only configure URL binding in non-Development environments (Docker)
+// In Development, launchSettings.json takes precedence
+if (!app.Environment.IsDevelopment())
+{
+    var port = builder.Configuration.GetValue<int?>("API_PORT") ?? 5000;
+    app.Urls.Add($"http://*:{port}");
+}
 
 app.Run();
 
@@ -47,40 +52,31 @@ void ConfigureServices(WebApplicationBuilder webAppBuilder)
     // Register Auth service
     webAppBuilder.Services.AddSingleton<IAuthService, AuthService>();
 
-    // Register API services (JobStore)
-    webAppBuilder.Services.AddSingleton<IJobStore, InMemoryJobStore>();
+    // Register OCR Job services
+    webAppBuilder.Services.AddSingleton<OcrJobService>();
+    webAppBuilder.Services.AddSingleton<IOcrJobService>(sp => sp.GetRequiredService<OcrJobService>());
 
-// Register Core services
-builder.Services.AddSingleton<IOcrFileService, OcrFileService>();
-builder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
-builder.Services.AddSingleton<IWatcherService, WatcherService>();
+    // Register background services
+    webAppBuilder.Services.AddHostedService<OcrJobProcessorService>();
+    webAppBuilder.Services.AddHostedService<OcrWorkerBackgroundService>();
 
-// Register API services
-builder.Services.AddSingleton<OcrJobService>();
-builder.Services.AddSingleton<IOcrJobService>(sp => sp.GetRequiredService<OcrJobService>());
+    // Add health checks
+    webAppBuilder.Services.AddHealthChecks();
 
-// Register background services
-builder.Services.AddHostedService<OcrJobProcessorService>();
-builder.Services.AddHostedService<OcrWorkerBackgroundService>();
+    // Add OpenAPI
+    webAppBuilder.Services.AddOpenApi();
+}
 
-// Add health checks
-builder.Services.AddHealthChecks();
-
-var app = builder.Build();
-
-// Configure the HTTP request pipeline
-const string openApiRoutePattern = "/openapi/{documentName}.json";
-const string apiReferenceRoutePrefix = "/docs";
-
-app.MapOpenApi(openApiRoutePattern);
-app.MapScalarApiReference(apiReferenceRoutePrefix, options =>
+void ConfigureApp(WebApplication webApp)
 {
-    // Enable Swagger UI
-    webApp.UseSwagger();
-    webApp.UseSwaggerUI(options =>
+    // Configure the HTTP request pipeline
+    const string openApiRoutePattern = "/openapi/{documentName}.json";
+    const string apiReferenceRoutePrefix = "/docs";
+
+    webApp.MapOpenApi(openApiRoutePattern);
+    webApp.MapScalarApiReference(apiReferenceRoutePrefix, options =>
     {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "KazoOCR API v1");
-        options.RoutePrefix = "swagger";
+        options.WithOpenApiRoutePattern(openApiRoutePattern);
     });
 
     // API Key middleware (only enforced if KAZO_API_KEY is set)
@@ -89,14 +85,26 @@ app.MapScalarApiReference(apiReferenceRoutePrefix, options =>
     webApp.UseAuthorization();
 
     webApp.MapControllers();
+    webApp.MapHealthChecks("/health");
 }
-    options.WithOpenApiRoutePattern(openApiRoutePattern);
-});
 
-app.MapControllers();
-app.MapHealthChecks("/health");
+async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)
+{
+    // Start the app to generate the OpenAPI spec
+    await webApp.StartAsync();
 
-app.Run();
+    try
+    {
+        using var httpClient = new HttpClient();
+        var openApiJson = await httpClient.GetStringAsync("http://localhost:5000/openapi/v1.json");
+        await File.WriteAllTextAsync(outputPath, openApiJson);
+        Console.WriteLine($"OpenAPI spec written to {outputPath}");
+    }
+    finally
+    {
+        await webApp.StopAsync();
+    }
+}
 
 // Make Program accessible for WebApplicationFactory in tests
 namespace KazoOCR.Api

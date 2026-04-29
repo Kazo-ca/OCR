@@ -1,0 +1,268 @@
+@page "/upload"
+@inject IKazoApiClient ApiClient
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Upload - KazoOCR</PageTitle>
+
+<AuthGuard>
+    <div class="container-fluid">
+        <h1 class="mb-4">Upload PDF for OCR</h1>
+
+        <div class="row">
+            <div class="col-lg-8">
+                <!-- Drag and Drop Zone -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="drop-zone @(_dragOver ? "drag-over" : "")"
+                             @ondragenter="OnDragEnter"
+                             @ondragleave="OnDragLeave"
+                             @ondragover:preventDefault="true"
+                             @ondrop="OnDrop"
+                             @ondrop:preventDefault="true">
+
+                            @if (_uploading)
+                            {
+                                <div class="text-center">
+                                    <div class="spinner-border text-primary mb-3" role="status">
+                                        <span class="visually-hidden">Uploading...</span>
+                                    </div>
+                                    <h5>Processing: @_selectedFileName</h5>
+                                    <p class="text-muted">Please wait...</p>
+                                </div>
+                            }
+                            else if (_selectedFile != null)
+                            {
+                                <div class="text-center">
+                                    <i class="bi bi-file-earmark-pdf fs-1 text-danger mb-3"></i>
+                                    <h5>@_selectedFileName</h5>
+                                    <p class="text-muted">@FormatFileSize(_selectedFile.Size)</p>
+                                    <button class="btn btn-outline-secondary btn-sm" @onclick="ClearFile">
+                                        Choose Different File
+                                    </button>
+                                </div>
+                            }
+                            else
+                            {
+                                <div class="text-center">
+                                    <i class="bi bi-cloud-arrow-up fs-1 text-primary mb-3"></i>
+                                    <h5>Upload PDF for OCR</h5>
+                                    <p class="text-muted mb-3">Select a PDF file to process</p>
+                                    <InputFile OnChange="OnFileSelected" accept=".pdf" class="d-none" id="fileInput" />
+                                    <label for="fileInput" class="btn btn-primary">
+                                        Browse Files
+                                    </label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+
+                @if (_errorMessage != null)
+                {
+                    <div class="alert alert-danger alert-dismissible fade show">
+                        @_errorMessage
+                        <button type="button" class="btn-close" @onclick="() => _errorMessage = null"></button>
+                    </div>
+                }
+
+                @if (_successMessage != null)
+                {
+                    <div class="alert alert-success alert-dismissible fade show">
+                        @_successMessage
+                        <button type="button" class="btn-close" @onclick="() => _successMessage = null"></button>
+                    </div>
+                }
+            </div>
+
+            <div class="col-lg-4">
+                <!-- OCR Options -->
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">OCR Options</h5>
+                    </div>
+                    <div class="card-body">
+                        <EditForm Model="_options" OnValidSubmit="ProcessFile">
+                            <div class="mb-3">
+                                <label class="form-label">Languages</label>
+                                <InputText @bind-Value="_options.Languages" class="form-control"
+                                           placeholder="e.g., fra+eng" />
+                                <small class="text-muted">Tesseract language codes (e.g., fra+eng)</small>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <InputCheckbox @bind-Value="_options.Deskew" class="form-check-input" id="deskewCheck" />
+                                <label class="form-check-label" for="deskewCheck">Deskew</label>
+                                <small class="d-block text-muted">Straighten tilted pages</small>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <InputCheckbox @bind-Value="_options.Clean" class="form-check-input" id="cleanCheck" />
+                                <label class="form-check-label" for="cleanCheck">Clean</label>
+                                <small class="d-block text-muted">Remove noise with Unpaper</small>
+                            </div>
+
+                            <div class="mb-3 form-check">
+                                <InputCheckbox @bind-Value="_options.Rotate" class="form-check-input" id="rotateCheck" />
+                                <label class="form-check-label" for="rotateCheck">Rotate</label>
+                                <small class="d-block text-muted">Auto-detect page orientation</small>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label">Optimization Level: @_options.Optimize</label>
+                                <InputNumber @bind-Value="_options.Optimize" class="form-range"
+                                             type="range" min="0" max="3" step="1" />
+                                <div class="d-flex justify-content-between small text-muted">
+                                    <span>0 (None)</span>
+                                    <span>1 (Lossless)</span>
+                                    <span>2 (Lossy)</span>
+                                    <span>3 (Max)</span>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-primary w-100"
+                                    disabled="@(_selectedFile == null || _uploading)">
+                                @if (_uploading)
+                                {
+                                    <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                }
+                                Process PDF
+                            </button>
+                        </EditForm>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</AuthGuard>
+
+<style>
+    .drop-zone {
+        border: 2px dashed #dee2e6;
+        border-radius: 0.5rem;
+        padding: 3rem;
+        transition: all 0.2s ease;
+        min-height: 250px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .drop-zone.drag-over {
+        border-color: #0d6efd;
+        background-color: rgba(13, 110, 253, 0.05);
+    }
+
+    .drop-zone:hover {
+        border-color: #6c757d;
+    }
+</style>
+
+@code {
+    private readonly OcrOptions _options = new();
+    private IBrowserFile? _selectedFile;
+    private string _selectedFileName = string.Empty;
+    private bool _uploading;
+    private bool _dragOver;
+    private string? _errorMessage;
+    private string? _successMessage;
+
+    private void OnDragEnter() => _dragOver = true;
+    private void OnDragLeave() => _dragOver = false;
+
+    private void OnDrop(DragEventArgs e)
+    {
+        _dragOver = false;
+        // The actual file handling is done by OnFileSelected
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _errorMessage = null;
+        _successMessage = null;
+
+        var file = e.File;
+        if (file.ContentType != "application/pdf" && !file.Name.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+        {
+            _errorMessage = "Please select a PDF file.";
+            return;
+        }
+
+        _selectedFile = file;
+        _selectedFileName = file.Name;
+    }
+
+    private void ClearFile()
+    {
+        _selectedFile = null;
+        _selectedFileName = string.Empty;
+        _errorMessage = null;
+        _successMessage = null;
+    }
+
+    private async Task ProcessFile()
+    {
+        if (_selectedFile == null) return;
+
+        _uploading = true;
+        _errorMessage = null;
+        _successMessage = null;
+
+        try
+        {
+            // Read the file content (max 100MB)
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: 100 * 1024 * 1024);
+            using var memoryStream = new MemoryStream();
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+
+            var response = await ApiClient.ProcessFileAsync(
+                _selectedFileName,
+                memoryStream,
+                _options);
+
+            if (response.Success)
+            {
+                _successMessage = $"Job submitted successfully! Job ID: {response.JobId}";
+                ClearFile();
+
+                // Navigate to dashboard after a short delay
+                await Task.Delay(1500);
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                _errorMessage = response.Error ?? "Failed to process file";
+            }
+        }
+        catch (IOException ex)
+        {
+            _errorMessage = $"File error: {ex.Message}";
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Upload error: {ex.Message}";
+        }
+        catch (TaskCanceledException)
+        {
+            _errorMessage = "Upload request timed out. Please try again.";
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private static string FormatFileSize(long bytes)
+    {
+        string[] sizes = ["B", "KB", "MB", "GB"];
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

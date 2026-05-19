@@ -24,6 +24,13 @@ public partial class MainPage : ContentPage
         SetupDragAndDrop();
     }
 
+    /// <inheritdoc />
+    protected override async void OnAppearing()
+    {
+        base.OnAppearing();
+        await _viewModel.InitializeAsync();
+    }
+
     private void SetupDragAndDrop()
     {
         var dropGesture = new DropGestureRecognizer();

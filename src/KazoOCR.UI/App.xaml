@@ -5,6 +5,10 @@
              x:Class="KazoOCR.UI.App">
     <Application.Resources>
         <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="Resources/Styles/Colors.xaml" />
+                <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
+            </ResourceDictionary.MergedDictionaries>
             <converters:IntToVisibilityConverter x:Key="IntToVisibilityConverter" />
             <converters:PercentToProgressConverter x:Key="PercentToProgressConverter" />
         </ResourceDictionary>

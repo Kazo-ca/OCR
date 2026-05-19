@@ -36,20 +36,25 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
             throw new ArgumentException("Output path cannot be empty or whitespace.", nameof(outputPath));
         }
 
-        var (fileName, arguments) = BuildProcessStartInfo(settings, inputPath, outputPath);
+        var (fileName, argumentList) = BuildProcessArgumentList(settings, inputPath, outputPath);
 
-        using var process = new Process
+        var startInfo = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            }
+            FileName = fileName,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+            StandardOutputEncoding = Encoding.UTF8,
+            StandardErrorEncoding = Encoding.UTF8
         };
+
+        foreach (var arg in argumentList)
+        {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        using var process = new Process { StartInfo = startInfo };
 
         var stdOutBuilder = new StringBuilder();
         var stdErrBuilder = new StringBuilder();
@@ -136,6 +141,76 @@ public sealed class OcrProcessRunner : IOcrProcessRunner
             return (OcrMyPdfCommand, arguments);
         }
     }
+
+    /// <summary>
+    /// Builds the process file name and argument list using <see cref="ProcessStartInfo.ArgumentList"/>
+    /// so each argument is passed as a discrete token (no shell quoting issues, Unicode-safe).
+    /// On Windows, wraps ocrmypdf via WSL and optionally targets a specific distro via <c>-d</c>.
+    /// </summary>
+    internal static (string FileName, IReadOnlyList<string> ArgumentList) BuildProcessArgumentList(
+        OcrSettings settings,
+        string inputPath,
+        string outputPath)
+    {
+        // Trigger validation via existing method
+        var ocrArgs = BuildOcrArgumentList(settings);
+
+        if (IsWindows())
+        {
+            var wslInputPath = ConvertToWslPath(inputPath);
+            var wslOutputPath = ConvertToWslPath(outputPath);
+
+            var args = new List<string>();
+
+            if (!string.IsNullOrWhiteSpace(settings.WslDistro))
+            {
+                args.Add("-d");
+                args.Add(settings.WslDistro);
+            }
+
+            args.Add("--");
+            args.Add(OcrMyPdfCommand);
+            args.AddRange(ocrArgs);
+            args.Add(wslInputPath);
+            args.Add(wslOutputPath);
+
+            return (WslCommand, args);
+        }
+        else
+        {
+            var args = new List<string>(ocrArgs) { inputPath, outputPath };
+            return (OcrMyPdfCommand, args);
+        }
+    }
+
+    /// <summary>
+    /// Builds the OCR argument tokens as a discrete list (for use with ArgumentList).
+    /// Runs validation via <see cref="BuildOcrArguments"/> first.
+    /// </summary>
+    private static IReadOnlyList<string> BuildOcrArgumentList(OcrSettings settings)
+    {
+        // Invoke to trigger range / language validation
+        BuildOcrArguments(settings);
+
+        var args = new List<string>();
+
+        if (settings.Deskew) args.Add("--deskew");
+        if (settings.Clean) args.Add("--clean");
+        if (settings.Rotate) args.Add("--rotate-pages");
+
+        args.Add("--optimize");
+        args.Add(settings.Optimize.ToString(System.Globalization.CultureInfo.InvariantCulture));
+
+        if (!string.IsNullOrWhiteSpace(settings.Languages))
+        {
+            args.Add("-l");
+            args.Add(settings.Languages);
+        }
+
+        return args;
+    }
+
+
 
     /// <summary>
     /// Builds the OCRmyPDF command-line arguments from the settings.

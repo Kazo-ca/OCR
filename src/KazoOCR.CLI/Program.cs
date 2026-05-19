@@ -65,6 +65,8 @@ services.AddSingleton<IEnvironmentDetector, EnvironmentDetector>();
 services.AddSingleton<IEnvironmentInstaller, EnvironmentInstaller>();
 services.AddSingleton<IServiceManager, ServiceManager>();
 services.AddSingleton<IPrivilegeElevator, PrivilegeElevator>();
+services.AddSingleton<IWslDistroDetector, WslDistroDetector>();
+services.AddSingleton<IKazoOcrConfigStore, KazoOcrConfigStore>();
 services.AddTransient<OcrCommand>();
 services.AddTransient<WatchCommand>();
 services.AddTransient<KazoOcrCommands>();

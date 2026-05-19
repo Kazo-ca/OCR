@@ -1,6 +1,7 @@
 using CommandDotNet;
 using KazoOCR.Core;
 using Microsoft.Extensions.Logging;
+using System.Runtime.InteropServices;
 
 namespace KazoOCR.CLI;
 
@@ -31,6 +32,8 @@ public class OcrCommand
     private readonly IOcrFileService _fileService;
     private readonly IOcrProcessRunner _processRunner;
     private readonly ILogger<OcrCommand> _logger;
+    private readonly IWslDistroDetector _wslDistroDetector;
+    private readonly IKazoOcrConfigStore _configStore;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="OcrCommand"/> class.
@@ -38,11 +41,20 @@ public class OcrCommand
     /// <param name="fileService">The OCR file service.</param>
     /// <param name="processRunner">The OCR process runner.</param>
     /// <param name="logger">The logger instance.</param>
-    public OcrCommand(IOcrFileService fileService, IOcrProcessRunner processRunner, ILogger<OcrCommand> logger)
+    /// <param name="wslDistroDetector">The WSL distro detector.</param>
+    /// <param name="configStore">The KazoOCR config store.</param>
+    public OcrCommand(
+        IOcrFileService fileService,
+        IOcrProcessRunner processRunner,
+        ILogger<OcrCommand> logger,
+        IWslDistroDetector wslDistroDetector,
+        IKazoOcrConfigStore configStore)
     {
         _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _wslDistroDetector = wslDistroDetector ?? throw new ArgumentNullException(nameof(wslDistroDetector));
+        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
     }
 
     /// <summary>
@@ -82,13 +94,88 @@ public class OcrCommand
         }
 
         // Check if input is a directory for batch processing
-        if (Directory.Exists(input))
+        string? wslDistro = null;
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            return await ProcessDirectoryAsync(input, suffix, languages, deskew, clean, rotate, optimize, cancellationToken);
+            wslDistro = await ResolveWslDistroAsync(cancellationToken);
+            if (wslDistro is null)
+            {
+                _logger.LogError("No WSL distribution with ocrmypdf found. Cannot proceed.");
+                return (int)ExitCodes.GeneralError;
+            }
         }
 
-        // Process single file
-        return await ProcessFileAsync(input, suffix, languages, deskew, clean, rotate, optimize, cancellationToken);
+        if (Directory.Exists(input))
+        {
+            return await ProcessDirectoryAsync(input, suffix, languages, deskew, clean, rotate, optimize, wslDistro, cancellationToken);
+        }
+
+        return await ProcessFileAsync(input, suffix, languages, deskew, clean, rotate, optimize, wslDistro, cancellationToken);
+    }
+
+    private async Task<string?> ResolveWslDistroAsync(CancellationToken cancellationToken)
+    {
+        var config = _configStore.Load();
+        if (!string.IsNullOrWhiteSpace(config.WslDistro))
+        {
+            _logger.LogInformation("Using saved WSL distribution: {Distro}", config.WslDistro);
+            return config.WslDistro;
+        }
+
+        var distros = await _wslDistroDetector.ListDistrosAsync(cancellationToken).ConfigureAwait(false);
+        if (distros.Count == 0)
+        {
+            _logger.LogError("No WSL distributions found. Install Ubuntu from https://aka.ms/wslstore");
+            return null;
+        }
+
+        var readyDistros = await _wslDistroDetector.ListDistrosWithOcrMyPdfAsync(cancellationToken).ConfigureAwait(false);
+        if (readyDistros.Count == 0)
+        {
+            _logger.LogError("No WSL distribution has ocrmypdf installed.");
+            _logger.LogInformation("Install with: sudo apt-get install -y ocrmypdf tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng ghostscript");
+            _logger.LogInformation("Available Microsoft Store: https://aka.ms/wslstore");
+            return null;
+        }
+
+        if (readyDistros.Count == 1)
+        {
+            var only = readyDistros[0];
+            _logger.LogInformation("Auto-selected WSL distribution: {Distro}", only);
+            _configStore.Save(new KazoOcrConfig { WslDistro = only });
+            return only;
+        }
+
+        // Prefer Ubuntu, otherwise prompt
+        var preferred = readyDistros.FirstOrDefault(
+            d => d.StartsWith("Ubuntu", StringComparison.OrdinalIgnoreCase));
+
+        if (preferred is not null)
+        {
+            _logger.LogInformation("Auto-selected WSL distribution: {Distro} (ocrmypdf ready)", preferred);
+            _configStore.Save(new KazoOcrConfig { WslDistro = preferred });
+            return preferred;
+        }
+
+        // Multiple distros with ocrmypdf — prompt user
+        _logger.LogInformation("Multiple WSL distributions have ocrmypdf. Select one:");
+        for (var i = 0; i < readyDistros.Count; i++)
+        {
+            _logger.LogInformation("  [{Index}] {Distro}", i + 1, readyDistros[i]);
+        }
+
+        Console.Write("Enter number: ");
+        var line = Console.ReadLine();
+        if (int.TryParse(line, out var choice) && choice >= 1 && choice <= readyDistros.Count)
+        {
+            var selected = readyDistros[choice - 1];
+            _configStore.Save(new KazoOcrConfig { WslDistro = selected });
+            _logger.LogInformation("Selected: {Distro} (saved to config)", selected);
+            return selected;
+        }
+
+        _logger.LogError("Invalid selection.");
+        return null;
     }
 
     private async Task<int> ProcessDirectoryAsync(
@@ -99,6 +186,7 @@ public class OcrCommand
         bool clean,
         bool rotate,
         int optimize,
+        string? wslDistro,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Processing directory: {Directory}", directoryPath);
@@ -147,7 +235,7 @@ public class OcrCommand
                 return (int)ExitCodes.GeneralError;
             }
 
-            var result = await ProcessFileAsync(file, suffix, languages, deskew, clean, rotate, optimize, cancellationToken);
+            var result = await ProcessFileAsync(file, suffix, languages, deskew, clean, rotate, optimize, wslDistro, cancellationToken);
             if (result != (int)ExitCodes.Success)
             {
                 hasErrors = true;
@@ -165,6 +253,7 @@ public class OcrCommand
         bool clean,
         bool rotate,
         int optimize,
+        string? wslDistro,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Processing file: {File}", filePath);
@@ -202,7 +291,8 @@ public class OcrCommand
             Deskew = deskew,
             Clean = clean,
             Rotate = rotate,
-            Optimize = optimize
+            Optimize = optimize,
+            WslDistro = wslDistro
         };
 
         // Compute output path
@@ -219,6 +309,13 @@ public class OcrCommand
                 return (int)ExitCodes.Success;
             }
 
+            if (IsOcrMyPdfNotFoundError(result.StandardError) || IsOcrMyPdfNotFoundError(result.StandardOutput))
+            {
+                _logger.LogError("ocrmypdf was not found in WSL distribution '{Distro}'.", wslDistro);
+                LogOcrMyPdfInstallInstructions();
+                return (int)ExitCodes.OcrFailed;
+            }
+
             _logger.LogError("OCR processing failed for {File}: {Error}", filePath, result.StandardError);
             return (int)ExitCodes.OcrFailed;
         }
@@ -227,5 +324,18 @@ public class OcrCommand
             _logger.LogWarning("OCR processing was canceled for {File}", filePath);
             return (int)ExitCodes.GeneralError;
         }
+    }
+
+    private static bool IsOcrMyPdfNotFoundError(string text) =>
+        !string.IsNullOrEmpty(text) &&
+        (text.Contains("ocrmypdf: not found", StringComparison.OrdinalIgnoreCase) ||
+         text.Contains("ocrmypdf: command not found", StringComparison.OrdinalIgnoreCase));
+
+    private void LogOcrMyPdfInstallInstructions()
+    {
+        _logger.LogInformation("Install ocrmypdf in your WSL distribution:");
+        _logger.LogInformation("  sudo apt-get install -y ocrmypdf tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng ghostscript");
+        _logger.LogInformation("Or install Ubuntu from the Microsoft Store: https://aka.ms/wslstore");
+        _logger.LogInformation("Delete %APPDATA%\\KazoOCR\\config.json to reset the distro selection.");
     }
 }

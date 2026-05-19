@@ -34,4 +34,10 @@ public sealed class OcrSettings
     /// Gets or sets the optimization level (0-3).
     /// </summary>
     public int Optimize { get; set; } = 1;
+
+    /// <summary>
+    /// Gets or sets the WSL distribution to use on Windows (e.g., "Ubuntu").
+    /// When null or empty, the default WSL distro is used.
+    /// </summary>
+    public string? WslDistro { get; set; }
 }

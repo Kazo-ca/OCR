@@ -13,6 +13,8 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
 {
     private readonly IOcrFileService _fileService;
     private readonly IOcrProcessRunner _processRunner;
+    private readonly IWslDistroDetector _wslDistroDetector;
+    private readonly IKazoOcrConfigStore _configStore;
 
     private string _suffix = "_OCR";
     private string _languages = "fra+eng";
@@ -23,6 +25,8 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     private double _progress;
     private string _statusMessage = "Ready. Drag & drop PDF files or select files to process.";
     private bool _isProcessing;
+    private string? _selectedWslDistro;
+    private bool _isWslSectionVisible;
     private CancellationTokenSource? _cancellationTokenSource;
 
     /// <summary>
@@ -30,12 +34,22 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     /// </summary>
     /// <param name="fileService">The OCR file service.</param>
     /// <param name="processRunner">The OCR process runner.</param>
-    public MainPageViewModel(IOcrFileService fileService, IOcrProcessRunner processRunner)
+    /// <param name="wslDistroDetector">The WSL distro detector.</param>
+    /// <param name="configStore">The KazoOCR config store.</param>
+    public MainPageViewModel(
+        IOcrFileService fileService,
+        IOcrProcessRunner processRunner,
+        IWslDistroDetector wslDistroDetector,
+        IKazoOcrConfigStore configStore)
     {
         _fileService = fileService ?? throw new ArgumentNullException(nameof(fileService));
         _processRunner = processRunner ?? throw new ArgumentNullException(nameof(processRunner));
+        _wslDistroDetector = wslDistroDetector ?? throw new ArgumentNullException(nameof(wslDistroDetector));
+        _configStore = configStore ?? throw new ArgumentNullException(nameof(configStore));
         LogMessages = [];
         PendingFiles = [];
+        AvailableDistros = [];
+        _isWslSectionVisible = OperatingSystem.IsWindows();
     }
 
     /// <summary>
@@ -131,6 +145,36 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     public bool IsNotProcessing => !IsProcessing;
 
     /// <summary>
+    /// Gets or sets the selected WSL distribution (Windows only).
+    /// Saving to config happens automatically in the setter.
+    /// </summary>
+    public string? SelectedWslDistro
+    {
+        get => _selectedWslDistro;
+        set
+        {
+            if (SetProperty(ref _selectedWslDistro, value) && value is not null)
+            {
+                _configStore.Save(new KazoOcrConfig { WslDistro = value });
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets a value indicating whether the WSL distro picker should be shown.
+    /// </summary>
+    public bool IsWslSectionVisible
+    {
+        get => _isWslSectionVisible;
+        private set => SetProperty(ref _isWslSectionVisible, value);
+    }
+
+    /// <summary>
+    /// Gets the list of available WSL distributions detected on this machine.
+    /// </summary>
+    public ObservableCollection<string> AvailableDistros { get; }
+
+    /// <summary>
     /// Gets the collection of log messages.
     /// </summary>
     public ObservableCollection<string> LogMessages { get; }
@@ -139,6 +183,91 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
     /// Gets the collection of pending files to process.
     /// </summary>
     public ObservableCollection<string> PendingFiles { get; }
+
+    /// <summary>
+    /// Detects installed WSL distributions and restores (or auto-selects) the distro to use.
+    /// Must be called once when the page appears. All UI mutations are dispatched to the main thread.
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            AddLog("Detecting WSL distributions...");
+
+            var distros = await _wslDistroDetector.ListDistrosAsync(cancellationToken).ConfigureAwait(false);
+
+            // ObservableCollection must be mutated on the UI thread
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                AvailableDistros.Clear();
+                foreach (var d in distros)
+                {
+                    AvailableDistros.Add(d);
+                }
+
+                IsWslSectionVisible = distros.Count > 0;
+            });
+
+            if (distros.Count == 0)
+            {
+                AddLog("No WSL distributions found.");
+                AddLog("Install Ubuntu from the Microsoft Store: https://aka.ms/wslstore");
+                return;
+            }
+
+            // Restore previously saved distro if it is still installed
+            var config = _configStore.Load();
+            if (!string.IsNullOrWhiteSpace(config.WslDistro) && distros.Contains(config.WslDistro))
+            {
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    // Set backing field directly to avoid re-saving to config
+                    _selectedWslDistro = config.WslDistro;
+                    OnPropertyChanged(nameof(SelectedWslDistro));
+                });
+                AddLog($"WSL distribution: {config.WslDistro} (restored from config)");
+                return;
+            }
+
+            // Auto-detect: find distros that have ocrmypdf installed
+            AddLog("Checking ocrmypdf availability in WSL distributions...");
+            var readyDistros = await _wslDistroDetector.ListDistrosWithOcrMyPdfAsync(cancellationToken).ConfigureAwait(false);
+
+            if (readyDistros.Count == 0)
+            {
+                AddLog("No WSL distribution has ocrmypdf installed.");
+                AddLog("After installing ocrmypdf, restart the app or select a distro manually.");
+                AddLog("  sudo apt-get install -y ocrmypdf tesseract-ocr tesseract-ocr-fra tesseract-ocr-eng ghostscript");
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    _selectedWslDistro = distros[0];
+                    OnPropertyChanged(nameof(SelectedWslDistro));
+                });
+                return;
+            }
+
+            // Prefer a distro whose name starts with Ubuntu, otherwise take the first ready one
+            var preferred = readyDistros.FirstOrDefault(
+                d => d.StartsWith("Ubuntu", StringComparison.OrdinalIgnoreCase))
+                ?? readyDistros[0];
+
+            await MainThread.InvokeOnMainThreadAsync(() => SelectedWslDistro = preferred);
+            AddLog($"Auto-selected WSL distribution: {preferred} (ocrmypdf ready)");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            AddLog($"WSL detection error: {ex.Message}");
+        }
+    }
 
     /// <summary>
     /// Adds files to the pending files list.
@@ -301,7 +430,8 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
             Deskew = Deskew,
             Clean = Clean,
             Rotate = Rotate,
-            Optimize = Optimize
+            Optimize = Optimize,
+            WslDistro = SelectedWslDistro
         };
 
         // Compute output path
@@ -343,9 +473,30 @@ public sealed class MainPageViewModel : INotifyPropertyChanged
 
     private void AddLog(string message)
     {
-        // Using local time for user-facing log display
         var timestamp = DateTimeOffset.Now.ToString("HH:mm:ss");
-        LogMessages.Add($"[{timestamp}] {message}");
+        var entry = $"[{timestamp}] {message}";
+
+        // MainThread.IsMainThread requires the WinUI3 COM runtime.
+        // In unit tests that runtime is absent, so we catch the exception and fall back
+        // to direct mutation (tests run single-threaded so it is safe).
+        bool isMainThread;
+        try
+        {
+            isMainThread = MainThread.IsMainThread;
+        }
+        catch
+        {
+            isMainThread = true;
+        }
+
+        if (isMainThread)
+        {
+            LogMessages.Add(entry);
+        }
+        else
+        {
+            MainThread.BeginInvokeOnMainThread(() => LogMessages.Add(entry));
+        }
     }
 
     private void UpdateStatusMessage()

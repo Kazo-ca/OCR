@@ -15,20 +15,33 @@ public class MainPageViewModelTests
 {
     private readonly Mock<IOcrFileService> _mockFileService;
     private readonly Mock<IOcrProcessRunner> _mockProcessRunner;
+    private readonly Mock<IWslDistroDetector> _mockWslDistroDetector;
+    private readonly Mock<IKazoOcrConfigStore> _mockConfigStore;
     private readonly MainPageViewModel _viewModel;
 
     public MainPageViewModelTests()
     {
         _mockFileService = new Mock<IOcrFileService>();
         _mockProcessRunner = new Mock<IOcrProcessRunner>();
-        _viewModel = new MainPageViewModel(_mockFileService.Object, _mockProcessRunner.Object);
+        _mockWslDistroDetector = new Mock<IWslDistroDetector>();
+        _mockConfigStore = new Mock<IKazoOcrConfigStore>();
+        _mockConfigStore.Setup(x => x.Load()).Returns(new KazoOcrConfig());
+        _viewModel = new MainPageViewModel(
+            _mockFileService.Object,
+            _mockProcessRunner.Object,
+            _mockWslDistroDetector.Object,
+            _mockConfigStore.Object);
     }
 
     [Fact]
     public void Constructor_ThrowsArgumentNullException_WhenFileServiceIsNull()
     {
         // Act & Assert
-        var act = () => new MainPageViewModel(null!, _mockProcessRunner.Object);
+        var act = () => new MainPageViewModel(
+            null!,
+            _mockProcessRunner.Object,
+            _mockWslDistroDetector.Object,
+            _mockConfigStore.Object);
         act.Should().Throw<ArgumentNullException>().WithParameterName("fileService");
     }
 
@@ -36,7 +49,11 @@ public class MainPageViewModelTests
     public void Constructor_ThrowsArgumentNullException_WhenProcessRunnerIsNull()
     {
         // Act & Assert
-        var act = () => new MainPageViewModel(_mockFileService.Object, null!);
+        var act = () => new MainPageViewModel(
+            _mockFileService.Object,
+            null!,
+            _mockWslDistroDetector.Object,
+            _mockConfigStore.Object);
         act.Should().Throw<ArgumentNullException>().WithParameterName("processRunner");
     }
 

@@ -29,6 +29,8 @@ public static class MauiProgram
         // Register Core services
         builder.Services.AddSingleton<IOcrFileService, OcrFileService>();
         builder.Services.AddSingleton<IOcrProcessRunner, OcrProcessRunner>();
+        builder.Services.AddSingleton<IWslDistroDetector, WslDistroDetector>();
+        builder.Services.AddSingleton<IKazoOcrConfigStore, KazoOcrConfigStore>();
 
         // Register ViewModels
         builder.Services.AddTransient<MainPageViewModel>();

@@ -13,7 +13,10 @@
     <WarningsNotAsErrors>$(WarningsNotAsErrors);PRI249</WarningsNotAsErrors>
     <MSBuildWarningsAsMessages>$(MSBuildWarningsAsMessages);PRI249</MSBuildWarningsAsMessages>
     <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
     <EnableDefaultMauiItems>true</EnableDefaultMauiItems>
+    <!-- Use XAML source generation (required for .NET 10 MAUI — bypasses the old XamlCompiler.exe) -->
+    <MauiXamlInflator>SourceGen</MauiXamlInflator>
     <ApplicationTitle>KazoOCR</ApplicationTitle>
     <ApplicationId>com.kazo.ocr</ApplicationId>
     <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
@@ -28,10 +31,10 @@
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
   
-<itemGroup>
+<ItemGroup>
     <InternalsVisibleTo Include="KazoOCR.Tests" />
     <ProjectReference Include="..\KazoOCR.Core\KazoOCR.Core.csproj" />
-  </itemGroup>
+  </ItemGroup>
   <ItemGroup Condition="'$(BuildMAUI)' == 'true'">
     
     <PackageReference Include="Microsoft.Maui.Controls" Version="10.0.41" />

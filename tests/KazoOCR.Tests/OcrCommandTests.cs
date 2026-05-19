@@ -13,6 +13,8 @@ public class OcrCommandTests
     private readonly Mock<IOcrFileService> _fileServiceMock;
     private readonly Mock<IOcrProcessRunner> _processRunnerMock;
     private readonly Mock<ILogger<OcrCommand>> _loggerMock;
+    private readonly Mock<IWslDistroDetector> _wslDistroDetectorMock;
+    private readonly Mock<IKazoOcrConfigStore> _configStoreMock;
     private readonly OcrCommand _command;
 
     public OcrCommandTests()
@@ -20,7 +22,24 @@ public class OcrCommandTests
         _fileServiceMock = new Mock<IOcrFileService>();
         _processRunnerMock = new Mock<IOcrProcessRunner>();
         _loggerMock = new Mock<ILogger<OcrCommand>>();
-        _command = new OcrCommand(_fileServiceMock.Object, _processRunnerMock.Object, _loggerMock.Object);
+        _wslDistroDetectorMock = new Mock<IWslDistroDetector>();
+        _configStoreMock = new Mock<IKazoOcrConfigStore>();
+
+        // Default: Ubuntu distro with ocrmypdf installed so Execute() can proceed on Windows
+        _wslDistroDetectorMock
+            .Setup(x => x.ListDistrosAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "Ubuntu" });
+        _wslDistroDetectorMock
+            .Setup(x => x.ListDistrosWithOcrMyPdfAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<string> { "Ubuntu" });
+        _configStoreMock.Setup(x => x.Load()).Returns(new KazoOcrConfig());
+
+        _command = new OcrCommand(
+            _fileServiceMock.Object,
+            _processRunnerMock.Object,
+            _loggerMock.Object,
+            _wslDistroDetectorMock.Object,
+            _configStoreMock.Object);
     }
 
     /// <summary>
@@ -42,7 +61,12 @@ public class OcrCommandTests
     public void Constructor_WithNullFileService_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var action = () => new OcrCommand(null!, _processRunnerMock.Object, _loggerMock.Object);
+        var action = () => new OcrCommand(
+            null!,
+            _processRunnerMock.Object,
+            _loggerMock.Object,
+            _wslDistroDetectorMock.Object,
+            _configStoreMock.Object);
         action.Should().Throw<ArgumentNullException>().WithParameterName("fileService");
     }
 
@@ -50,7 +74,12 @@ public class OcrCommandTests
     public void Constructor_WithNullProcessRunner_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var action = () => new OcrCommand(_fileServiceMock.Object, null!, _loggerMock.Object);
+        var action = () => new OcrCommand(
+            _fileServiceMock.Object,
+            null!,
+            _loggerMock.Object,
+            _wslDistroDetectorMock.Object,
+            _configStoreMock.Object);
         action.Should().Throw<ArgumentNullException>().WithParameterName("processRunner");
     }
 
@@ -58,7 +87,12 @@ public class OcrCommandTests
     public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
         // Act & Assert
-        var action = () => new OcrCommand(_fileServiceMock.Object, _processRunnerMock.Object, null!);
+        var action = () => new OcrCommand(
+            _fileServiceMock.Object,
+            _processRunnerMock.Object,
+            null!,
+            _wslDistroDetectorMock.Object,
+            _configStoreMock.Object);
         action.Should().Throw<ArgumentNullException>().WithParameterName("logger");
     }
 

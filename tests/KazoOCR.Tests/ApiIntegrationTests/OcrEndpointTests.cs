@@ -53,17 +53,35 @@ public class OcrEndpointTests : IDisposable
     // 1. The factory is returned and disposed by callers via 'using var factory = CreateFactory(...)'
     // 2. The ByteArrayContent instances added to MultipartFormDataContent are owned/disposed by the MultipartFormDataContent
 #pragma warning disable CA2000
-    private static WebApplicationFactory<KazoOCR.Api.Program> CreateFactory(string? apiKey = null)
+    private static WebApplicationFactory<KazoOCR.Api.Program> CreateFactory(
+        string? apiKey = null, string? outputDirectory = null, TimeSpan? processingDelay = null)
     {
         var mockOcrRunner = new Mock<IOcrProcessRunner>();
         mockOcrRunner
             .Setup(r => r.RunAsync(It.IsAny<OcrSettings>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ProcessResult.Success());
+            .Returns<OcrSettings, string, string, CancellationToken>(async (_, _, outputPath, ct) =>
+            {
+                if (processingDelay is { } delay)
+                {
+                    await Task.Delay(delay, ct);
+                }
+
+                // outputDirectory is only set by tests that need a real file on disk to download;
+                // other tests rely on ComputeOutputPath's fake relative path never existing.
+                if (outputDirectory is not null)
+                {
+                    await File.WriteAllBytesAsync(outputPath, "%PDF-1.4 fake ocr output"u8.ToArray(), ct);
+                }
+
+                return ProcessResult.Success();
+            });
 
         var mockFileService = new Mock<IOcrFileService>();
         mockFileService.Setup(f => f.IsAlreadyProcessed(It.IsAny<string>(), It.IsAny<string>())).Returns(false);
-        mockFileService.Setup(f => f.ComputeOutputPath(It.IsAny<string>(), It.IsAny<string>())).Returns((string input, string suffix) => 
-            Path.GetFileNameWithoutExtension(input) + suffix + ".pdf");
+        mockFileService.Setup(f => f.ComputeOutputPath(It.IsAny<string>(), It.IsAny<string>())).Returns((string input, string suffix) =>
+            outputDirectory is null
+                ? Path.GetFileNameWithoutExtension(input) + suffix + ".pdf"
+                : Path.Combine(outputDirectory, Path.GetFileNameWithoutExtension(input) + suffix + ".pdf"));
 
         return new WebApplicationFactory<KazoOCR.Api.Program>()
             .WithWebHostBuilder(builder =>
@@ -315,5 +333,99 @@ public class OcrEndpointTests : IDisposable
 
         // Assert - openapi endpoint should be accessible without API key
         response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task DownloadResult_UnknownId_Returns404()
+    {
+        // Arrange
+        using var factory = CreateFactory(apiKey: null);
+        using var client = factory.CreateClient();
+
+        // Act
+        var response = await client.GetAsync("/api/ocr/jobs/unknown-job-id/download");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task DownloadResult_JobStillProcessing_Returns409()
+    {
+        // Arrange - the mocked runner deliberately takes longer than this test waits
+        using var factory = CreateFactory(apiKey: null, processingDelay: TimeSpan.FromSeconds(3));
+        using var client = factory.CreateClient();
+        using var formContent = CreatePdfFormContent();
+
+        var submitResponse = await client.PostAsync("/api/ocr/process", formContent);
+        var job = await submitResponse.Content.ReadFromJsonAsync<OcrJobResult>();
+
+        // Act - ask immediately, well before the 3s mocked processing delay elapses
+        var response = await client.GetAsync($"/api/ocr/jobs/{job!.Id}/download");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task DownloadResult_JobCompleted_ReturnsPdfBytes()
+    {
+        // Arrange - the mocked runner writes a real file this time, so there is something to serve
+        using var factory = CreateFactory(apiKey: null, outputDirectory: _testDataPath);
+        using var client = factory.CreateClient();
+        using var formContent = CreatePdfFormContent();
+
+        var submitResponse = await client.PostAsync("/api/ocr/process", formContent);
+        var created = await submitResponse.Content.ReadFromJsonAsync<OcrJobResult>();
+        await WaitForJobStatusAsync(client, created!.Id, JobStatus.Completed, TimeSpan.FromSeconds(5));
+
+        // Act
+        var response = await client.GetAsync($"/api/ocr/jobs/{created.Id}/download");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("application/pdf");
+        var bytes = await response.Content.ReadAsByteArrayAsync();
+        bytes.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public async Task DownloadResult_JobCompletedButFileMissing_Returns404()
+    {
+        // Arrange - default factory: ComputeOutputPath returns a path nothing ever writes to,
+        // simulating the file having gone missing despite the job being marked Completed.
+        using var factory = CreateFactory(apiKey: null);
+        using var client = factory.CreateClient();
+        using var formContent = CreatePdfFormContent();
+
+        var submitResponse = await client.PostAsync("/api/ocr/process", formContent);
+        var created = await submitResponse.Content.ReadFromJsonAsync<OcrJobResult>();
+        await WaitForJobStatusAsync(client, created!.Id, JobStatus.Completed, TimeSpan.FromSeconds(5));
+
+        // Act
+        var response = await client.GetAsync($"/api/ocr/jobs/{created.Id}/download");
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    private static async Task<OcrJobResult> WaitForJobStatusAsync(
+        HttpClient client, string jobId, JobStatus status, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (DateTime.UtcNow < deadline)
+        {
+            var response = await client.GetAsync($"/api/ocr/jobs/{jobId}");
+            response.EnsureSuccessStatusCode();
+            var job = await response.Content.ReadFromJsonAsync<OcrJobResult>();
+            if (job!.Status == status)
+            {
+                return job;
+            }
+
+            await Task.Delay(50);
+        }
+
+        throw new TimeoutException($"Job {jobId} did not reach status {status} within {timeout}.");
     }
 }

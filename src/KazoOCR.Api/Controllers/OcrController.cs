@@ -147,6 +147,44 @@ public sealed class OcrController : ControllerBase
     }
 
     /// <summary>
+    /// Download the processed PDF for a completed OCR job.
+    /// </summary>
+    /// <param name="id">The job identifier.</param>
+    /// <returns>The processed PDF file.</returns>
+    [HttpGet("jobs/{id}/download")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public IActionResult DownloadResult(string id)
+    {
+        if (!IsValidJobId(id))
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
+        var job = _jobService.GetJob(id);
+        if (job is null)
+        {
+            return NotFound(new { error = "Job not found" });
+        }
+
+        if (job.Status != Models.JobStatus.Completed)
+        {
+            return Conflict(new { error = $"Job is not completed (status: {job.Status})" });
+        }
+
+        if (job.OutputPath is null || !System.IO.File.Exists(job.OutputPath))
+        {
+            _logger.LogError(
+                "Job {JobId} is marked Completed but its output file is missing at {OutputPath}",
+                id, job.OutputPath);
+            return NotFound(new { error = "Output file not found" });
+        }
+
+        return PhysicalFile(job.OutputPath, "application/pdf", Path.GetFileName(job.OutputPath));
+    }
+
+    /// <summary>
     /// Cancel or remove an OCR job.
     /// </summary>
     /// <param name="id">The job identifier.</param>

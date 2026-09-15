@@ -17,6 +17,11 @@ if (args.Length >= 2 && args[0] == "--generate-openapi")
     genApp.MapDefaultEndpoints();
     ConfigureApp(genApp);
 
+    // Bind explicitly: without this, Kestrel falls back to the container's ambient port
+    // (ASPNETCORE_HTTP_PORTS=8080 in the .NET base images) instead of the 5000 the fetch
+    // below expects, and the mismatch crashes this ephemeral instance on every publish.
+    genApp.Urls.Add("http://127.0.0.1:5000");
+
     // Generate OpenAPI JSON
     var outputPath = args[1];
     await GenerateOpenApiSpec(genApp, outputPath);
@@ -99,7 +104,7 @@ async Task GenerateOpenApiSpec(WebApplication webApp, string outputPath)
     try
     {
         using var httpClient = new HttpClient();
-        var openApiJson = await httpClient.GetStringAsync("http://localhost:5000/openapi/v1.json");
+        var openApiJson = await httpClient.GetStringAsync("http://127.0.0.1:5000/openapi/v1.json");
         await File.WriteAllTextAsync(outputPath, openApiJson);
         Console.WriteLine($"OpenAPI spec written to {outputPath}");
     }

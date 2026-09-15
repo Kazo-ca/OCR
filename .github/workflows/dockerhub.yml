@@ -19,9 +19,9 @@ jobs:
       matrix:
         include:
           - service: api
-            image: kazoca/kazoocr-api
+            image: kazoca2/kazoocr-api
           - service: web
-            image: kazoca/kazoocr-web
+            image: kazoca2/kazoocr-web
     steps:
       # For workflow_run, head_branch is the tag name itself (tag-push runs), not a branch.
       - name: Determine source commit and version
